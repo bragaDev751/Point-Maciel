@@ -2,7 +2,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase, TENANT_ID_MACIEL } from '@/lib/supabase';
 import { toast } from 'react-hot-toast';
-import { Trash2 } from 'lucide-react';
+import { Trash2, Power, PowerOff } from 'lucide-react'; // Ícones novos
 
 interface ComplementoItem {
   id: string;
@@ -10,6 +10,7 @@ interface ComplementoItem {
   preco: number;
   categoria_pai: string;
   tenant_id: string;
+  disponivel: boolean; // Adicionado
 }
 
 export function ComplementosManager() {
@@ -40,6 +41,23 @@ export function ComplementosManager() {
     carregar(); 
   }, [carregar]);
 
+  // FUNÇÃO NOVA: Alternar Disponibilidade
+  async function toggleStatus(id: string, statusAtual: boolean) {
+    const { error } = await supabase
+      .from('complementos')
+      .update({ disponivel: !statusAtual })
+      .eq('id', id);
+
+    if (!error) {
+      toast.success(statusAtual ? "Item esgotado!" : "Item disponível!");
+      setItens(prev => prev.map(item => 
+        item.id === id ? { ...item, disponivel: !statusAtual } : item
+      ));
+    } else {
+      toast.error("Erro ao mudar status");
+    }
+  }
+
   async function handleAdd(e: React.FormEvent) {
     e.preventDefault();
     if (!form.nome) return toast.error("Nome obrigatório");
@@ -48,7 +66,8 @@ export function ComplementosManager() {
       nome: form.nome,
       preco: parseFloat(form.preco.replace(',', '.')),
       categoria_pai: form.categoria_pai,
-      tenant_id: TENANT_ID_MACIEL
+      tenant_id: TENANT_ID_MACIEL,
+      disponivel: true // Por padrão, entra como disponível
     }]);
 
     if (!error) {
@@ -74,7 +93,6 @@ export function ComplementosManager() {
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-      {/* O restante do seu JSX permanece igual */}
       <div className="lg:col-span-4">
         <form onSubmit={handleAdd} className="bg-white/5 border border-white/10 p-6 rounded-3xl space-y-4 sticky top-8">
           <h2 className="text-[#ffcc00] font-black text-xs uppercase italic tracking-widest">Novo Sabores/Extra</h2>
@@ -125,14 +143,28 @@ export function ComplementosManager() {
                   <div className="h-20 bg-white/5 animate-pulse rounded-2xl md:col-span-2" />
               ) : (
                 itens.filter(i => i.categoria_pai === cat).map(item => (
-                    <div key={item.id} className="flex justify-between items-center bg-white/5 p-4 rounded-2xl border border-white/5 hover:border-white/10 transition-all">
-                      <div>
-                        <p className="text-sm font-bold uppercase italic text-white">{item.nome}</p>
-                        <p className="text-[#ffcc00] text-[9px] font-black tracking-widest">
-                            {item.preco === 0 ? 'GRÁTIS' : `+ R$ ${Number(item.preco).toFixed(2)}`}
-                        </p>
+                    <div key={item.id} className={`flex justify-between items-center bg-white/5 p-4 rounded-2xl border transition-all ${item.disponivel ? 'border-white/5' : 'border-red-500/20 opacity-60 grayscale'}`}>
+                      <div className="flex items-center gap-4">
+                        {/* Botão de Toggle */}
+                        <button 
+                          onClick={() => toggleStatus(item.id, item.disponivel)}
+                          className={`w-10 h-10 flex items-center justify-center rounded-xl transition-all ${item.disponivel ? 'bg-green-500/10 text-green-500 hover:bg-green-500/20' : 'bg-red-500/10 text-red-500 hover:bg-red-500/20'}`}
+                          title={item.disponivel ? "Desativar" : "Ativar"}
+                        >
+                          {item.disponivel ? <Power size={18}/> : <PowerOff size={18}/>}
+                        </button>
+
+                        <div>
+                          <p className={`text-sm font-bold uppercase italic ${item.disponivel ? 'text-white' : 'text-white/40 line-through'}`}>
+                            {item.nome}
+                          </p>
+                          <p className="text-[#ffcc00] text-[9px] font-black tracking-widest">
+                              {item.preco === 0 ? 'GRÁTIS' : `+ R$ ${Number(item.preco).toFixed(2)}`}
+                          </p>
+                        </div>
                       </div>
-                      <button onClick={() => excluir(item.id)} className="p-2 bg-red-500/10 text-red-500 rounded-lg hover:bg-red-500/20 transition-all">
+
+                      <button onClick={() => excluir(item.id)} className="p-2 bg-red-500/10 text-red-500 rounded-lg hover:bg-red-500/20 transition-all opacity-40 hover:opacity-100">
                         <Trash2 size={16}/>
                       </button>
                     </div>

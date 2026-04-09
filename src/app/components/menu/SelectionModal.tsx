@@ -17,16 +17,18 @@ interface SelectionModalProps {
 export const SelectionModal = ({ produto, complementos, onClose, onConfirm }: SelectionModalProps) => {
   const [selecoes, setSelecoes] = useState<{ [key: string]: number }>({});
 
-  // Verifica se o produto atual é Açaí para mudar os textos
   const isAcai = useMemo(() => {
     return produto?.categoria_nome?.trim().toLowerCase() === 'açaí';
   }, [produto]);
 
+  // Lógica corrigida e sem duplicação
   const { sabores, adicionais } = useMemo(() => {
     if (!produto) return { sabores: [], adicionais: [] };
     
+    // FILTRO: Pertence à categoria E está disponível (não é false)
     const filtrados = complementos.filter(comp => 
-      comp.categoria_pai?.trim().toLowerCase() === produto.categoria_nome?.trim().toLowerCase()
+      comp.categoria_pai?.trim().toLowerCase() === produto.categoria_nome?.trim().toLowerCase() &&
+      comp.disponivel !== false
     );
 
     return {
@@ -54,7 +56,6 @@ export const SelectionModal = ({ produto, complementos, onClose, onConfirm }: Se
     acc + ((selecoes[a.id] || 0) * (a.preco || 0)), 0
   );
 
-  // Preço Total = (Preço base * quantidade de itens base) + adicionais
   const precoTotal = (produto.preco * (totalBase || 1)) + precoExtras;
 
   const handleConfirm = () => {

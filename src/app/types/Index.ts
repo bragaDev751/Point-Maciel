@@ -30,6 +30,7 @@ export interface Complemento {
   preco: number;
   categoria_pai: string;
   tenant_id: string;
+  disponivel?: boolean; 
 }
 export interface ComplementoSelecao extends Complemento {
   quantidade_selecionada: number;
