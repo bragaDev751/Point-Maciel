@@ -15,7 +15,8 @@ interface ProdutoMutation {
   hora_inicio?: string;
   hora_fim?: string;
   disponivel_sempre?: boolean;
-  unidade_medida?: string; // Adicionado aqui
+  unidade_medida?: string; 
+  
 }
 
 interface CategoriaDB {
@@ -55,7 +56,6 @@ export const ProductForm = () => {
         .order("nome", { ascending: true });
 
       if (error) {
-        // eslint-disable-next-line no-console
         console.error("Erro ao buscar categorias:", error);
       } else if (data) {
         setListaCategorias(data);
@@ -70,7 +70,6 @@ export const ProductForm = () => {
     return () => window.removeEventListener("refreshCategories", carregarCategorias);
   }, [categoria]);
 
-  // Evento de edição
   useEffect(() => {
     const handleEdit = (e: Event) => {
       const customEvent = e as CustomEvent<Produto>;

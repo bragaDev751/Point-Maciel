@@ -2,6 +2,7 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
+import { User } from 'lucide-react'; 
 
 interface HeaderProps {
   cartCount: number;
@@ -10,23 +11,34 @@ interface HeaderProps {
 
 export const Header = ({ cartCount, isAnimating }: HeaderProps) => (
   <header className="p-4 flex justify-between items-center bg-[#3b013b]/80 backdrop-blur-2xl sticky top-0 z-50 border-b border-white/5 shadow-2xl">
-    {/* LADO ESQUERDO: Logo e Status */}
-    <div className="flex items-center gap-3">
-      <div className="relative h-11 w-11 rounded-2xl overflow-hidden border-2 border-[#ffcc00] shadow-[0_0_15px_rgba(255,204,0,0.2)]">
+    
+    {/* LADO ESQUERDO: Logo (Link para Voltar ao Cardápio) */}
+    <Link href="/" className="flex items-center gap-3 active:scale-95 transition-transform group">
+      <div className="relative h-11 w-11 rounded-2xl overflow-hidden border-2 border-[#ffcc00] shadow-[0_0_15px_rgba(255,204,0,0.2)] group-hover:shadow-[#ffcc00]/40 transition-all">
         <Image src="/logo.png" alt="Logo Point Maciel" fill className="object-cover" />
       </div>
       <div className="flex flex-col">
         <h1 className="text-lg font-black italic text-[#ffcc00] leading-none tracking-tighter uppercase">Point Maciel</h1>
         <div className="flex items-center gap-1.5 mt-1">
           <span className="h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse shadow-[0_0_8px_rgba(34,197,94,0.8)]" />
-          <span className="text-[9px] text-green-400 font-black uppercase tracking-[0.2em]">Delivery Aberto</span>
+          <span className="text-[9px] text-green-400 font-black uppercase tracking-[0.2em]">Cardápio Aberto</span>
         </div>
       </div>
-    </div>
+    </Link>
     
-    {/* LADO DIREITO: Ações (Admin + Carrinho) */}
+    {/* LADO DIREITO: Ações */}
     <div className="flex items-center gap-2">
-      {/* Botão Admin - Agora dentro do Header para alinhar */}
+      
+      {/* Botão Área do Cliente (Fidelidade) */}
+      <Link 
+        href="/fidelidade" // Ajuste para a rota correta da sua página de pontos
+        className="h-12 w-12 flex items-center justify-center bg-white/5 rounded-2xl border border-white/10 text-white/50 hover:text-[#ffcc00] hover:border-[#ffcc00]/30 transition-all backdrop-blur-md active:scale-90"
+        title="Meus Pontos e Pedidos"
+      >
+        <User size={20} strokeWidth={2.5} />
+      </Link>
+
+      {/* Botão Admin */}
       <Link 
         href="/admin/login" 
         className="h-12 w-12 flex items-center justify-center bg-white/5 rounded-2xl border border-white/10 text-white/20 hover:text-[#ffcc00] hover:border-[#ffcc00]/30 transition-all backdrop-blur-md active:scale-90"
@@ -38,7 +50,7 @@ export const Header = ({ cartCount, isAnimating }: HeaderProps) => (
       {/* Botão Carrinho */}
       <motion.div 
         animate={isAnimating ? { scale: [1, 1.2, 1] } : {}}
-        className="relative h-12 w-12 flex items-center justify-center bg-white/5 rounded-2xl border border-white/10 backdrop-blur-md"
+        className="relative h-12 w-12 flex items-center justify-center bg-white/5 rounded-2xl border border-white/10 backdrop-blur-md shadow-inner"
       >
         <span className="text-xl">🛒</span>
         {cartCount > 0 && (

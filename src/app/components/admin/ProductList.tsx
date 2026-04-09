@@ -2,6 +2,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { supabase, TENANT_ID_MACIEL } from '@/lib/supabase';
 import { Produto } from '@/app/types/Index';
+import { Power, PowerOff, Trash2, Edit3 } from 'lucide-react'; // Ícones para manter o padrão
 import toast from 'react-hot-toast';
 
 export const ProductList = () => {
@@ -35,6 +36,28 @@ export const ProductList = () => {
     window.addEventListener('refreshProducts', handleRefresh);
     return () => window.removeEventListener('refreshProducts', handleRefresh);
   }, [fetchProdutos]);
+
+  // FUNÇÃO PARA ALTERNAR DISPONIBILIDADE
+  const toggleStatus = async (id: string | number, statusAtual: boolean) => {
+    try {
+      const { error } = await supabase
+        .from('produtos')
+        .update({ disponivel: !statusAtual })
+        .eq('id', id)
+        .eq('tenant_id', TENANT_ID_MACIEL);
+
+      if (error) throw error;
+
+      toast.success(statusAtual ? "Produto Pausado ⏸️" : "Produto Ativo ✅");
+      
+      // Atualiza o estado local para refletir a mudança na hora
+      setProdutos(prev => prev.map(p => 
+        p.id === id ? { ...p, disponivel: !statusAtual } : p
+      ));
+    } catch (err) {
+      toast.error("Erro ao mudar status");
+    }
+  };
 
   const deletar = async (id: string | number, imageUrl?: string) => {
     if (!confirm("Remover este item definitivamente?")) return;
@@ -73,7 +96,7 @@ export const ProductList = () => {
     <div className="space-y-4">
       <div className="flex justify-between items-end px-2">
         <h3 className="text-[10px] text-white/20 uppercase font-black tracking-[0.2em]">
-          Itens Disponíveis ({produtos.length})
+          Itens no Painel ({produtos.length})
         </h3>
       </div>
 
@@ -86,9 +109,26 @@ export const ProductList = () => {
           produtos.map((p) => (
             <div 
               key={p.id} 
-              className="flex justify-between items-center bg-white/5 p-5 rounded-[2.5rem] border border-white/5 hover:border-white/10 transition-all group"
+              className={`flex justify-between items-center p-5 rounded-[2.5rem] border transition-all group ${
+                p.disponivel 
+                ? 'bg-white/5 border-white/5 hover:border-white/10' 
+                : 'bg-red-500/5 border-red-500/10 grayscale opacity-60'
+              }`}
             >
               <div className="flex items-center gap-4 min-w-0">
+                {/* BOTÃO DE POWER (IGUAL AO DOS COMPLEMENTOS) */}
+                <button 
+                  onClick={() => toggleStatus(p.id, p.disponivel ?? true)}
+                  className={`w-12 h-12 flex items-center justify-center rounded-2xl transition-all flex-shrink-0 ${
+                    p.disponivel 
+                    ? 'bg-green-500/10 text-green-500 hover:bg-green-500/20' 
+                    : 'bg-red-500/20 text-red-500 hover:bg-red-500/30'
+                  }`}
+                  title={p.disponivel ? "Pausar Vendas" : "Ativar Vendas"}
+                >
+                  {p.disponivel ? <Power size={20}/> : <PowerOff size={20}/>}
+                </button>
+
                 <div className="w-16 h-16 rounded-2xl overflow-hidden border border-white/10 flex-shrink-0 bg-black/20">
                   <img 
                     src={p.imagem_url || p.image || 'https://via.placeholder.com/150'} 
@@ -101,13 +141,9 @@ export const ProductList = () => {
                   <span className="text-[9px] text-[#ffcc00] font-bold uppercase tracking-[0.15em] block mb-0.5">
                     {p.categoria_nome}
                   </span>
-                  <p className="font-bold text-base text-white/90 leading-tight truncate">{p.nome}</p>
-                  
-                  {p.descricao && (
-                    <p className="text-[10px] text-white/40 italic line-clamp-1 mb-1 font-medium">
-                      {p.descricao}
-                    </p>
-                  )}
+                  <p className={`font-bold text-base leading-tight truncate ${p.disponivel ? 'text-white/90' : 'text-white/30 line-through'}`}>
+                    {p.nome}
+                  </p>
                   
                   <p className="text-[#ffcc00] font-black italic text-lg leading-none pt-1">
                     R$ {p.preco.toFixed(2)}
@@ -120,14 +156,14 @@ export const ProductList = () => {
                   onClick={() => window.dispatchEvent(new CustomEvent('editProduct', { detail: p }))}
                   className="h-11 w-11 bg-white/5 text-white/50 border border-white/10 rounded-2xl flex items-center justify-center hover:bg-[#ffcc00] hover:text-[#3b013b] hover:border-[#ffcc00] active:scale-90 transition-all"
                 >
-                  ✏️
+                  <Edit3 size={18} />
                 </button>
 
                 <button 
                   onClick={() => deletar(p.id, p.imagem_url || p.image)}
                   className="h-11 w-11 bg-red-500/10 text-red-500/50 border border-red-500/10 rounded-2xl flex items-center justify-center hover:bg-red-500 hover:text-white active:scale-90 transition-all"
                 >
-                  🗑️
+                  <Trash2 size={18} />
                 </button>
               </div>
             </div>

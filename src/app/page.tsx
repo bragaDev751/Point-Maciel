@@ -111,19 +111,16 @@ function HomeContent() {
   };
 
 const confirmarAdicaoModal = (p: Produto, qtdTotal: number, extras?: ComplementoSelecao[]) => {
-  // 1. Calculamos o preço total somando os extras multiplicado pelas suas quantidades
   const precoExtras = extras?.reduce((acc, comp) => {
     return acc + ((comp.preco || 0) * comp.quantidade_selecionada);
   }, 0) || 0;
 
-  // 2. Criamos uma descrição detalhada: "2x Chocolate, 1x Morango"
   const descricaoDetalhada = extras?.length 
     ? extras.map(e => `${e.quantidade_selecionada}x ${e.nome}`).join(', ')
     : p.descricao;
 
   const produtoComExtras: Produto = {
     ...p,
-    // Preço total do item = (preço da base * quantidade de bolas) + adicionais pagos
     preco: (p.preco * (qtdTotal || 1)) + precoExtras,
     descricao: descricaoDetalhada,
   };

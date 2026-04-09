@@ -13,6 +13,7 @@ interface ItemPedido {
   qtd: number;
   preco: number;
   detalhes?: string;
+  
 }
 
 type StatusPedido = "novo" | "preparando" | "pronto" | "finalizado";
@@ -30,6 +31,7 @@ interface Pedido {
   status: StatusPedido;
   metodo_pagamento?: string;
   created_at: string;
+  pontos_processados: boolean;
 }
 
 export function CozinhaMonitor() {
@@ -112,14 +114,111 @@ export function CozinhaMonitor() {
 
   /* ================= ACTIONS ================= */
 
-  const atualizarStatus = async (id: string, novoStatus: StatusPedido) => {
-    await supabase.from("pedidos").update({ status: novoStatus }).eq("id", id);
+  const atualizarStatus = async (pedido: Pedido, novoStatus: StatusPedido) => {
+    try {
+      const { error: errorStatus } = await supabase
+        .from("pedidos")
+        .update({ status: novoStatus })
+        .eq("id", pedido.id);
+
+      if (errorStatus) throw errorStatus;
+
+      if (novoStatus === "finalizado" && pedido.cliente_telefone) {
+        const pontosGanhos = Math.floor(pedido.total_pedido);
+
+        const { data: existente, error: errorBusca } = await supabase
+          .from("fidelidade")
+          .select("pontos_acumulados")
+          .eq("tenant_id", TENANT_ID_MACIEL)
+          .eq("cliente_telefone", pedido.cliente_telefone)
+          .maybeSingle();
+
+        if (errorBusca) throw errorBusca;
+
+        if (existente) {
+          const { error: errorUpdate } = await supabase
+            .from("fidelidade")
+            .update({
+              pontos_acumulados: existente.pontos_acumulados + pontosGanhos,
+              cliente_nome: pedido.cliente_nome,
+              updated_at: new Date().toISOString(),
+            })
+            .eq("tenant_id", TENANT_ID_MACIEL)
+            .eq("cliente_telefone", pedido.cliente_telefone);
+
+          if (errorUpdate) throw errorUpdate;
+        } else {
+          const { error: errorInsert } = await supabase
+            .from("fidelidade")
+            .insert({
+              tenant_id: TENANT_ID_MACIEL,
+              cliente_telefone: pedido.cliente_telefone,
+              cliente_nome: pedido.cliente_nome,
+              pontos_acumulados: pontosGanhos,
+            });
+
+          if (errorInsert) throw errorInsert;
+        }
+
+        console.log(`🎉 ${pontosGanhos} pontos para ${pedido.cliente_nome}`);
+      }
+    } catch (err) {
+      console.error("Erro ao atualizar status/fidelidade:", err);
+      alert("Erro ao atualizar pedido.");
+    }
   };
 
-  const excluirPedido = async (id: string) => {
-    if (!window.confirm("Deseja excluir permanentemente este pedido?")) return;
-    await supabase.from("pedidos").delete().eq("id", id);
-  };
+const excluirPedido = async (pedido: Pedido) => {
+  if (!window.confirm("Deseja excluir permanentemente este pedido? Se pontos foram gerados, eles serão estornados.")) return;
+
+  try {
+    // 1. Verifica se deve estornar (Só se a trava estiver TRUE e houver telefone)
+    if (pedido.pontos_processados && pedido.cliente_telefone) {
+      const pontosParaRemover = Math.floor(pedido.total_pedido);
+
+      // Busca saldo atual do cliente
+      const { data: fidelidade, error: errorBusca } = await supabase
+        .from("fidelidade")
+        .select("pontos_acumulados")
+        .eq("tenant_id", TENANT_ID_MACIEL)
+        .eq("cliente_telefone", pedido.cliente_telefone)
+        .maybeSingle();
+
+      if (errorBusca) throw errorBusca;
+
+      if (fidelidade) {
+        // Calcula novo saldo (garantindo que não seja menor que zero)
+        const novoSaldo = Math.max(0, fidelidade.pontos_acumulados - pontosParaRemover);
+        
+        const { error: errorEstorno } = await supabase
+          .from("fidelidade")
+          .update({ 
+            pontos_acumulados: novoSaldo,
+            updated_at: new Date().toISOString()
+          })
+          .eq("tenant_id", TENANT_ID_MACIEL)
+          .eq("cliente_telefone", pedido.cliente_telefone);
+
+        if (errorEstorno) throw errorEstorno;
+        console.log(`📉 Estorno realizado: -${pontosParaRemover} pontos.`);
+      }
+    }
+
+    // 2. Deleta o pedido do banco
+    const { error: errorDelete } = await supabase
+      .from("pedidos")
+      .delete()
+      .eq("id", pedido.id)
+      .eq("tenant_id", TENANT_ID_MACIEL);
+
+    if (errorDelete) throw errorDelete;
+
+    // O Realtime (useEffect) já removerá o pedido da lista automaticamente.
+  } catch (err) {
+    console.error("Erro na exclusão/estorno:", err);
+    alert("Falha ao excluir o pedido. Tente novamente.");
+  }
+};
 
   /* ================= PRINT FUNCTION (Layout Térmico) ================= */
 
@@ -242,7 +341,7 @@ export function CozinhaMonitor() {
                           <Printer size={14} />
                         </button>
                         <button
-                          onClick={() => excluirPedido(pedido.id)}
+                          onClick={() => excluirPedido(pedido)}
                           className="w-8 h-8 flex items-center justify-center rounded-full bg-red-500/10 text-red-500 opacity-0 group-hover:opacity-100 transition-all hover:bg-red-500 hover:text-white"
                         >
                           ✕
@@ -322,36 +421,34 @@ export function CozinhaMonitor() {
                       )}
 
                       {/* BOTÕES DE STATUS */}
-                      <div className="flex gap-2">
-                        {pedido.status === "novo" && (
-                          <button
-                            onClick={() =>
-                              atualizarStatus(pedido.id, "preparando")
-                            }
-                            className="w-full bg-blue-500 py-3 rounded-xl text-[10px] font-black uppercase text-white hover:bg-blue-600 shadow-lg shadow-blue-500/10"
-                          >
-                            Preparar
-                          </button>
-                        )}
-                        {pedido.status === "preparando" && (
-                          <button
-                            onClick={() => atualizarStatus(pedido.id, "pronto")}
-                            className="w-full bg-orange-500 py-3 rounded-xl text-[10px] font-black uppercase text-black hover:bg-orange-600 shadow-lg shadow-orange-500/10"
-                          >
-                            Pronto
-                          </button>
-                        )}
-                        {pedido.status === "pronto" && (
-                          <button
-                            onClick={() =>
-                              atualizarStatus(pedido.id, "finalizado")
-                            }
-                            className="w-full bg-green-500 py-3 rounded-xl text-[10px] font-black uppercase text-black hover:bg-green-600 shadow-lg shadow-green-500/10"
-                          >
-                            Finalizar
-                          </button>
-                        )}
-                      </div>
+<div className="flex gap-2">
+  {pedido.status === "novo" && (
+    <button
+      onClick={() => atualizarStatus(pedido, "preparando")}
+      className="w-full bg-blue-500 py-3 rounded-xl text-[10px] font-black uppercase text-white hover:bg-blue-600 shadow-lg shadow-blue-500/20 transition-all active:scale-95"
+    >
+      👨‍🍳 Preparar
+    </button>
+  )}
+
+  {pedido.status === "preparando" && (
+    <button
+      onClick={() => atualizarStatus(pedido, "pronto")}
+      className="w-full bg-orange-500 py-3 rounded-xl text-[10px] font-black uppercase text-white hover:bg-orange-600 shadow-lg shadow-orange-500/20 transition-all active:scale-95 animate-pulse-subtle"
+    >
+      🔔 Pronto para Entrega
+    </button>
+  )}
+
+  {pedido.status === "pronto" && (
+    <button
+      onClick={() => atualizarStatus(pedido, "finalizado")}
+      className="w-full bg-green-500 py-3 rounded-xl text-[10px] font-black uppercase text-black hover:bg-green-600 shadow-lg shadow-green-500/20 transition-all active:scale-95 font-bold"
+    >
+      🏁 Finalizar e Pontuar
+    </button>
+  )}
+</div>
                     </motion.div>
                   );
                 })}
