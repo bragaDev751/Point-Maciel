@@ -6,7 +6,7 @@ export const Footer = () => {
       <div className="flex flex-col items-center gap-4">
         <div className="bg-white/5 border border-white/10 px-4 py-2 rounded-full backdrop-blur-md">
           <p className="text-[10px] font-black uppercase tracking-widest text-white/40">
-            📍 Rua Exemplo, 123 - Centro
+            📍 Joaquim Pereira da Silveira - Conjunto Esperança
           </p>
         </div>
         

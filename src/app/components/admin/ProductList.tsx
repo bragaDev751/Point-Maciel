@@ -2,7 +2,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { supabase, TENANT_ID_MACIEL } from '@/lib/supabase';
 import { Produto } from '@/app/types/Index';
-import { Power, PowerOff, Trash2, Edit3 } from 'lucide-react'; // Ícones para manter o padrão
+import { Power, PowerOff, Trash2, Edit3 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 export const ProductList = () => {

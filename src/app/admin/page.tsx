@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Toaster, toast } from 'react-hot-toast';
+import { User } from '@supabase/supabase-js';
 
 // Componentes
 import { ProductForm } from '@/app/components/admin/ProductForm';
@@ -84,16 +85,38 @@ export default function AdminPage() {
   const [novaCat, setNovaCat] = useState({ nome: '', emoji: '' });
   const [listaCategorias, setListaCategorias] = useState<Categoria[]>([]);
   const [loadingCategorias, setLoadingCategorias] = useState(true);
+  
+  // Estados de Autenticação com Tipagem Correta
+  const [authLoading, setAuthLoading] = useState(true);
+  const [user, setUser] = useState<User | null>(null);
 
   const router = useRouter();
 
+  // 1. Verificação de Segurança (Client-side)
+  useEffect(() => {
+    const checkUser = async () => {
+      const { data: { user: activeUser }, error } = await supabase.auth.getUser();
+      if (error || !activeUser) {
+        router.push('/admin/login');
+      } else {
+        setUser(activeUser);
+        setAuthLoading(false);
+      }
+    };
+    checkUser();
+  }, [router]);
+
+  // 2. Logout
   const handleLogout = async () => {
+    const loadingId = toast.loading('Saindo...');
     await supabase.auth.signOut();
-    toast.success('Sessão encerrada');
+    toast.success('Sessão encerrada', { id: loadingId });
     router.push('/admin/login');
   };
 
+  // 3. Categorias
   const carregarCategorias = useCallback(async () => {
+    if (authLoading) return;
     try {
       const { data, error } = await supabase
         .from('categorias')
@@ -108,7 +131,7 @@ export default function AdminPage() {
     } finally {
       setLoadingCategorias(false);
     }
-  }, []);
+  }, [authLoading]);
 
   useEffect(() => {
     carregarCategorias();
@@ -132,7 +155,6 @@ export default function AdminPage() {
     } else {
       toast.success('Categoria criada!', { id: loadingId });
       setNovaCat({ nome: '', emoji: '' });
-      setLoadingCategorias(true);
       carregarCategorias();
       window.dispatchEvent(new Event('refreshCategories'));
     }
@@ -153,7 +175,6 @@ export default function AdminPage() {
       toast.error('Erro ao excluir', { id: loadingId });
     } else {
       toast.success('Removido!', { id: loadingId });
-      setLoadingCategorias(true);
       carregarCategorias();
       window.dispatchEvent(new Event('refreshCategories'));
     }
@@ -164,7 +185,7 @@ export default function AdminPage() {
       onClick={() => setAbaAtiva(id)}
       className={`flex items-center gap-2 px-6 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all duration-300 ${
         abaAtiva === id
-          ? 'bg-[#ffcc00] text-[#3b013b] scale-105'
+          ? 'bg-[#ffcc00] text-[#3b013b] scale-105 shadow-[0_0_20px_rgba(255,204,0,0.3)]'
           : 'text-white/30 hover:text-white hover:bg-white/5'
       }`}
     >
@@ -173,12 +194,24 @@ export default function AdminPage() {
     </button>
   );
 
+  // Tela de Loading enquanto verifica se está logado
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-[#0f010f] flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-10 h-10 border-4 border-[#ffcc00] border-t-transparent rounded-full animate-spin" />
+          <p className="text-[#ffcc00] font-black uppercase tracking-tighter text-[10px]">Autenticando Gabriel...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <main className="min-h-screen bg-[#0f010f] text-white p-4 md:p-8">
       <Toaster position="bottom-right" />
 
       <div className="max-w-7xl mx-auto">
-        <header className="mb-12 flex flex-col xl:flex-row justify-between gap-8">
+        <header className="mb-12 flex flex-col xl:flex-row justify-between items-center gap-8">
           <div className="flex items-center gap-6">
             <div>
               <h1 className="text-4xl font-black italic uppercase">
@@ -188,7 +221,7 @@ export default function AdminPage() {
             <ControleLoja />
           </div>
 
-          <nav className="flex bg-white/5 p-1.5 rounded-[2.5rem] border border-white/10 overflow-x-auto">
+          <nav className="flex bg-white/5 p-1.5 rounded-[2.5rem] border border-white/10 overflow-x-auto max-w-full">
             {renderBotaoNav('relatorios', '📊', 'Dashboard')}
             {renderBotaoNav('cozinha', '👨‍🍳', 'Cozinha')}
             {renderBotaoNav('produtos', '🍔', 'Produtos')}
@@ -196,13 +229,22 @@ export default function AdminPage() {
             {renderBotaoNav('mesas', '📍', 'Mesas')}
           </nav>
 
-          <button onClick={handleLogout} className="text-red-400 font-black text-xs uppercase">
-            Sair 🚪
+          <button 
+            onClick={handleLogout} 
+            className="group flex items-center gap-2 text-white/40 hover:text-red-400 transition-colors font-black text-[10px] uppercase tracking-widest"
+          >
+            Sair <span className="group-hover:translate-x-1 transition-transform">🚪</span>
           </button>
         </header>
 
         <AnimatePresence mode="wait">
-          <motion.div key={abaAtiva} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+          <motion.div 
+            key={abaAtiva} 
+            initial={{ opacity: 0, y: 10 }} 
+            animate={{ opacity: 1, y: 0 }} 
+            exit={{ opacity: 0, y: -10 }}
+            transition={{ duration: 0.2 }}
+          >
             {abaAtiva === 'relatorios' && <Dashboard />}
             {abaAtiva === 'cozinha' && <CozinhaMonitor />}
             {abaAtiva === 'mesas' && <TableManager />}
@@ -211,31 +253,40 @@ export default function AdminPage() {
             {abaAtiva === 'produtos' && (
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
                 <div className="lg:col-span-4">
-                  <div className="bg-white/5 p-6 rounded-3xl sticky top-8">
+                  <div className="bg-white/5 p-6 rounded-3xl sticky top-8 border border-white/10">
+                    <h3 className="text-[#ffcc00] font-black text-xs uppercase mb-4 tracking-widest">Categorias</h3>
                     <div className="flex gap-2 mb-4">
                       <input
                         placeholder="🍔"
                         value={novaCat.emoji}
                         onChange={e => setNovaCat({ ...novaCat, emoji: e.target.value })}
-                        className="w-14 p-3 bg-black/40 rounded-xl border"
+                        className="w-14 p-3 bg-black/40 rounded-xl border border-white/10 focus:border-[#ffcc00] outline-none transition-all"
                       />
                       <input
-                        placeholder="Nome"
+                        placeholder="Nova Categoria..."
                         value={novaCat.nome}
                         onChange={e => setNovaCat({ ...novaCat, nome: e.target.value })}
-                        className="flex-1 p-3 bg-black/40 rounded-xl border"
+                        className="flex-1 p-3 bg-black/40 rounded-xl border border-white/10 focus:border-[#ffcc00] outline-none transition-all"
                       />
                     </div>
 
-                    <button onClick={cadastrarCategoria} className="w-full bg-[#ffcc00] py-3 rounded-xl font-black text-xs">
-                      Salvar
+                    <button 
+                      onClick={cadastrarCategoria} 
+                      className="w-full bg-[#ffcc00] text-black py-3 rounded-xl font-black text-xs uppercase hover:scale-[1.02] transition-transform"
+                    >
+                      Salvar Categoria
                     </button>
 
-                    <div className="space-y-2 mt-6">
+                    <div className="space-y-2 mt-6 max-h-[300px] overflow-y-auto pr-2">
                       {listaCategorias.map(cat => (
-                        <div key={cat.id} className="flex justify-between bg-white/5 p-3 rounded-xl">
-                          <span>{cat.emoji} {cat.nome}</span>
-                          <button onClick={() => excluirCategoria(cat.id)}>✕</button>
+                        <div key={cat.id} className="flex justify-between items-center bg-white/5 p-3 rounded-xl border border-white/5">
+                          <span className="text-sm font-medium">{cat.emoji} {cat.nome}</span>
+                          <button 
+                            onClick={() => excluirCategoria(cat.id)}
+                            className="text-white/20 hover:text-red-500 transition-colors"
+                          >
+                            ✕
+                          </button>
                         </div>
                       ))}
                     </div>

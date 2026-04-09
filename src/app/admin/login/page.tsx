@@ -16,17 +16,31 @@ export default function LoginPage() {
     e.preventDefault();
     setLoading(true);
 
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
 
-    if (error) {
-      toast.error("Acesso negado: Verifique suas credenciais");
+      if (error) {
+        toast.error("Acesso negado: Verifique suas credenciais");
+        setLoading(false);
+        return;
+      }
+
+      if (data?.user) {
+        toast.success("Bem-vindo, Maciel!");
+        
+        // --- AS DUAS LINHAS MÁGICAS PARA O NEXT.JS 15 ---
+        router.refresh(); // Limpa o cache de rotas do servidor
+        
+        setTimeout(() => {
+          router.push('/admin'); 
+        }, 800); // Dá tempo do navegador salvar o cookie da sessão
+      }
+    } catch (err) {
+      toast.error("Ocorreu um erro inesperado");
       setLoading(false);
-    } else {
-      toast.success("Bem-vindo, Maciel!");
-      router.push('/admin'); 
     }
   };
 
@@ -56,7 +70,13 @@ export default function LoginPage() {
         className="w-full max-w-md bg-white/5 border border-white/10 p-10 rounded-[3rem] backdrop-blur-2xl shadow-2xl text-center relative z-10"
       >
         <div className="relative h-24 w-24 mx-auto mb-6 rounded-[2rem] overflow-hidden border-2 border-[#ffcc00] shadow-[0_0_20px_rgba(255,204,0,0.3)]">
-          <Image src="/logo.png" alt="Logo" fill className="object-cover" />
+          <Image 
+            src="/logo.png" 
+            alt="Logo" 
+            fill 
+            priority 
+            className="object-cover" 
+          />
         </div>
         
         <h1 className="text-3xl font-black italic text-white uppercase tracking-tighter">
@@ -88,6 +108,7 @@ export default function LoginPage() {
             />
           </div>
           <button 
+            type="submit"
             disabled={loading}
             className="w-full bg-[#ffcc00] text-[#3b013b] p-5 rounded-2xl font-black uppercase tracking-widest active:scale-95 transition-all shadow-xl shadow-[#ffcc00]/10 mt-6 disabled:opacity-50"
           >

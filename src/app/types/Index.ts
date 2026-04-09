@@ -48,6 +48,7 @@ export interface Produto {
   disponivel_sempre?: boolean;
   unidade_medida?: string;
   disponivel?: boolean;
+
 }
 
 export interface Categoria {
@@ -65,6 +66,7 @@ export interface Complemento {
   categoria_pai: string;
   tenant_id: string;
   disponivel?: boolean; 
+  tipo?: 'sabor' | 'extra'; 
 }
 
 export interface ComplementoSelecao extends Complemento {

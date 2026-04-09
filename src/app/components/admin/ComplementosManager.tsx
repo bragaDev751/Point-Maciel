@@ -2,7 +2,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase, TENANT_ID_MACIEL } from '@/lib/supabase';
 import { toast } from 'react-hot-toast';
-import { Trash2, Power, PowerOff } from 'lucide-react'; // Ícones novos
+import { Trash2, Power, PowerOff, IceCream, PlusCircle } from 'lucide-react'; 
 
 interface ComplementoItem {
   id: string;
@@ -10,13 +10,20 @@ interface ComplementoItem {
   preco: number;
   categoria_pai: string;
   tenant_id: string;
-  disponivel: boolean; // Adicionado
+  disponivel: boolean; 
+  tipo: 'sabor' | 'extra'; 
 }
 
 export function ComplementosManager() {
   const [itens, setItens] = useState<ComplementoItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [form, setForm] = useState({ nome: '', preco: '0', categoria_pai: 'Sorvete' });
+  
+  const [form, setForm] = useState({ 
+    nome: '', 
+    preco: '0', 
+    categoria_pai: 'Sorvete',
+    tipo: 'sabor' as 'sabor' | 'extra'
+  });
 
   const carregar = useCallback(async () => {
     setLoading(true);
@@ -41,7 +48,6 @@ export function ComplementosManager() {
     carregar(); 
   }, [carregar]);
 
-  // FUNÇÃO NOVA: Alternar Disponibilidade
   async function toggleStatus(id: string, statusAtual: boolean) {
     const { error } = await supabase
       .from('complementos')
@@ -66,21 +72,22 @@ export function ComplementosManager() {
       nome: form.nome,
       preco: parseFloat(form.preco.replace(',', '.')),
       categoria_pai: form.categoria_pai,
+      tipo: form.tipo, // Campo novo para o banco
       tenant_id: TENANT_ID_MACIEL,
-      disponivel: true // Por padrão, entra como disponível
+      disponivel: true
     }]);
 
     if (!error) {
-      toast.success("Adicionado!");
+      toast.success("Adicionado com sucesso!");
       setForm({ ...form, nome: '', preco: '0' });
       carregar();
     } else {
-      toast.error("Erro ao salvar");
+      toast.error("Erro ao salvar no banco. Verifique se a coluna 'tipo' existe.");
     }
   }
 
   async function excluir(id: string) {
-    if (!confirm("Excluir item?")) return;
+    if (!confirm("Excluir item permanentemente?")) return;
     const { error } = await supabase.from('complementos').delete().eq('id', id);
     
     if (!error) {
@@ -93,84 +100,125 @@ export function ComplementosManager() {
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+      {/* FORMULÁRIO DE CADASTRO */}
       <div className="lg:col-span-4">
-        <form onSubmit={handleAdd} className="bg-white/5 border border-white/10 p-6 rounded-3xl space-y-4 sticky top-8">
-          <h2 className="text-[#ffcc00] font-black text-xs uppercase italic tracking-widest">Novo Sabores/Extra</h2>
+        <form onSubmit={handleAdd} className="bg-white/5 border border-white/10 p-6 rounded-3xl space-y-4 sticky top-8 backdrop-blur-md">
+          <h2 className="text-[#ffcc00] font-black text-xs uppercase italic tracking-[0.2em] mb-4">Novo Item / Sabor</h2>
+          
           <div className="space-y-1">
-            <label className="text-[9px] font-black uppercase text-white/20 ml-2">Nome</label>
+            <label className="text-[9px] font-black uppercase text-white/20 ml-2 italic">Nome do Complemento</label>
             <input 
-              placeholder="Ex: Chocolate, Nutella" 
+              placeholder="Ex: Chocolate, Morango, Granulado" 
               value={form.nome} 
               onChange={e => setForm({...form, nome: e.target.value})}
-              className="w-full p-3 bg-black/40 rounded-xl border border-white/10 outline-none focus:border-[#ffcc00] text-sm text-white"
+              className="w-full p-4 bg-black/40 rounded-2xl border border-white/10 outline-none focus:border-[#ffcc00] text-sm text-white transition-all"
             />
           </div>
+
           <div className="space-y-1">
-            <label className="text-[9px] font-black uppercase text-white/20 ml-2">Preço Adicional</label>
+            <label className="text-[9px] font-black uppercase text-white/20 ml-2 italic">Preço Adicional (R$)</label>
             <input 
-              placeholder="0 para grátis" 
+              placeholder="0,00" 
               value={form.preco} 
               onChange={e => setForm({...form, preco: e.target.value})}
-              className="w-full p-3 bg-black/40 rounded-xl border border-white/10 outline-none focus:border-[#ffcc00] text-sm text-white"
+              className="w-full p-4 bg-black/40 rounded-2xl border border-white/10 outline-none focus:border-[#ffcc00] text-sm text-white transition-all"
             />
           </div>
-          <div className="space-y-1">
-            <label className="text-[9px] font-black uppercase text-white/20 ml-2">Pertence a qual categoria?</label>
-            <select 
-              value={form.categoria_pai} 
-              onChange={e => setForm({...form, categoria_pai: e.target.value})}
-              className="w-full p-3 bg-black/40 rounded-xl border border-white/10 outline-none focus:border-[#ffcc00] text-sm appearance-none text-white"
-            >
-              <option value="Sorvete" className="bg-[#0f010f]">Sorvete</option>
-              <option value="Açaí" className="bg-[#0f010f]">Açaí</option>
-            </select>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <label className="text-[9px] font-black uppercase text-white/20 ml-2 italic">Categoria</label>
+              <select 
+                value={form.categoria_pai} 
+                onChange={e => setForm({...form, categoria_pai: e.target.value})}
+                className="w-full p-4 bg-black/40 rounded-2xl border border-white/10 outline-none focus:border-[#ffcc00] text-xs appearance-none text-white font-bold"
+              >
+                <option value="Sorvete" className="bg-[#0f010f]">Sorvete</option>
+                <option value="Açaí" className="bg-[#0f010f]">Açaí</option>
+              </select>
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-[9px] font-black uppercase text-white/20 ml-2 italic">Tipo de Item</label>
+              <select 
+                value={form.tipo} 
+                onChange={e => setForm({...form, tipo: e.target.value as 'sabor' | 'extra'})}
+                className="w-full p-4 bg-black/40 rounded-2xl border border-white/10 outline-none focus:border-[#ffcc00] text-xs appearance-none text-[#ffcc00] font-bold"
+              >
+                <option value="sabor" className="bg-[#0f010f]">Massa/Sabor</option>
+                <option value="extra" className="bg-[#0f010f]">Extra/Toping</option>
+              </select>
+            </div>
           </div>
-          <button type="submit" className="w-full bg-[#ffcc00] text-[#3b013b] py-4 rounded-xl font-black text-[10px] uppercase shadow-lg shadow-yellow-400/10 active:scale-95 transition-all">
-            Salvar Item
+
+          <button type="submit" className="w-full bg-[#ffcc00] text-[#3b013b] py-5 rounded-2xl font-black text-[11px] uppercase tracking-widest shadow-xl shadow-yellow-400/5 active:scale-95 transition-all mt-4 flex items-center justify-center gap-2">
+            <PlusCircle size={16} />
+            Salvar no Cardápio
           </button>
         </form>
       </div>
 
-      <div className="lg:col-span-8 space-y-8">
+      {/* LISTAGEM DE ITENS */}
+      <div className="lg:col-span-8 space-y-12">
         {['Sorvete', 'Açaí'].map(cat => (
-          <div key={cat} className="space-y-4">
+          <div key={cat} className="space-y-6">
             <div className="flex items-center gap-4">
-                <h3 className="text-xs font-black uppercase text-[#ffcc00] italic tracking-widest">{cat}</h3>
-                <div className="h-px flex-1 bg-white/5" />
+                <div className="p-2 bg-[#ffcc00]/10 rounded-lg">
+                  <IceCream size={16} className="text-[#ffcc00]" />
+                </div>
+                <h3 className="text-sm font-black uppercase text-white italic tracking-[0.2em]">{cat}</h3>
+                <div className="h-px flex-1 bg-gradient-to-r from-white/10 to-transparent" />
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              {loading ? (
-                  <div className="h-20 bg-white/5 animate-pulse rounded-2xl md:col-span-2" />
-              ) : (
-                itens.filter(i => i.categoria_pai === cat).map(item => (
-                    <div key={item.id} className={`flex justify-between items-center bg-white/5 p-4 rounded-2xl border transition-all ${item.disponivel ? 'border-white/5' : 'border-red-500/20 opacity-60 grayscale'}`}>
-                      <div className="flex items-center gap-4">
-                        {/* Botão de Toggle */}
-                        <button 
-                          onClick={() => toggleStatus(item.id, item.disponivel)}
-                          className={`w-10 h-10 flex items-center justify-center rounded-xl transition-all ${item.disponivel ? 'bg-green-500/10 text-green-500 hover:bg-green-500/20' : 'bg-red-500/10 text-red-500 hover:bg-red-500/20'}`}
-                          title={item.disponivel ? "Desativar" : "Ativar"}
-                        >
-                          {item.disponivel ? <Power size={18}/> : <PowerOff size={18}/>}
-                        </button>
 
-                        <div>
-                          <p className={`text-sm font-bold uppercase italic ${item.disponivel ? 'text-white' : 'text-white/40 line-through'}`}>
-                            {item.nome}
-                          </p>
-                          <p className="text-[#ffcc00] text-[9px] font-black tracking-widest">
-                              {item.preco === 0 ? 'GRÁTIS' : `+ R$ ${Number(item.preco).toFixed(2)}`}
-                          </p>
+            {/* Divisão por Subtipos (Sabores e Extras) */}
+            {['sabor', 'extra'].map(subTipo => (
+              <div key={subTipo} className="space-y-3">
+                <h4 className="text-[9px] font-black uppercase text-white/30 ml-2 tracking-widest">
+                  {subTipo === 'sabor' ? '🍦 Sabores / Massas' : '✨ Acompanhamentos / Extras'}
+                </h4>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {loading ? (
+                      <div className="h-20 bg-white/5 animate-pulse rounded-3xl md:col-span-2" />
+                  ) : (
+                    itens.filter(i => i.categoria_pai === cat && i.tipo === subTipo).length === 0 ? (
+                      <p className="text-[10px] text-white/10 italic p-4 border border-dashed border-white/5 rounded-2xl md:col-span-2 text-center">Nenhum item cadastrado nesta subcategoria.</p>
+                    ) : (
+                      itens.filter(i => i.categoria_pai === cat && i.tipo === subTipo).map(item => (
+                        <div key={item.id} className={`flex justify-between items-center bg-white/5 p-4 rounded-[1.5rem] border transition-all ${item.disponivel ? 'border-white/5' : 'border-red-500/20 opacity-60 grayscale'}`}>
+                          <div className="flex items-center gap-4">
+                            <button 
+                              onClick={() => toggleStatus(item.id, item.disponivel)}
+                              className={`w-11 h-11 flex items-center justify-center rounded-2xl transition-all ${item.disponivel ? 'bg-green-500/10 text-green-500 hover:bg-green-500/20' : 'bg-red-500/10 text-red-500 hover:bg-red-500/20'}`}
+                            >
+                              {item.disponivel ? <Power size={18}/> : <PowerOff size={18}/>}
+                            </button>
+
+                            <div>
+                              <p className={`text-sm font-bold uppercase italic tracking-tight ${item.disponivel ? 'text-white' : 'text-white/40 line-through'}`}>
+                                {item.nome}
+                              </p>
+                              <div className="flex items-center gap-2">
+                                <span className={`text-[8px] font-black px-1.5 py-0.5 rounded ${item.tipo === 'sabor' ? 'bg-[#ffcc00]/20 text-[#ffcc00]' : 'bg-purple-500/20 text-purple-400'} uppercase`}>
+                                  {item.tipo}
+                                </span>
+                                <p className="text-[#ffcc00] text-[10px] font-black italic">
+                                    {item.preco === 0 ? 'GRÁTIS' : `+ R$ ${Number(item.preco).toFixed(2)}`}
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+
+                          <button onClick={() => excluir(item.id)} className="p-3 text-white/20 hover:text-red-500 transition-all">
+                            <Trash2 size={16}/>
+                          </button>
                         </div>
-                      </div>
-
-                      <button onClick={() => excluir(item.id)} className="p-2 bg-red-500/10 text-red-500 rounded-lg hover:bg-red-500/20 transition-all opacity-40 hover:opacity-100">
-                        <Trash2 size={16}/>
-                      </button>
-                    </div>
-                  ))
-              )}
-            </div>
+                      ))
+                    )
+                  )}
+                </div>
+              </div>
+            ))}
           </div>
         ))}
       </div>
