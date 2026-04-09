@@ -19,18 +19,14 @@ export async function middleware(request: NextRequest) {
         set(name: string, value: string, options: CookieOptions) {
           request.cookies.set({ name, value, ...options })
           response = NextResponse.next({
-            request: {
-              headers: request.headers,
-            },
+            request: { headers: request.headers },
           })
           response.cookies.set({ name, value, ...options })
         },
         remove(name: string, options: CookieOptions) {
           request.cookies.set({ name, value: '', ...options })
           response = NextResponse.next({
-            request: {
-              headers: request.headers,
-            },
+            request: { headers: request.headers },
           })
           response.cookies.set({ name, value: '', ...options })
         },
@@ -40,9 +36,14 @@ export async function middleware(request: NextRequest) {
 
   const { data: { user } } = await supabase.auth.getUser()
 
-  // PROTEÇÃO: Se não houver usuário e a rota for /admin, manda pro /login
-  if (!user && request.nextUrl.pathname.startsWith('/admin')) {
-    return NextResponse.redirect(new URL('/login', request.url))
+  const isLoginPage = request.nextUrl.pathname === '/admin/login'
+
+  if (!user && request.nextUrl.pathname.startsWith('/admin') && !isLoginPage) {
+    return NextResponse.redirect(new URL('/admin/login', request.url))
+  }
+
+  if (user && isLoginPage) {
+    return NextResponse.redirect(new URL('/admin', request.url))
   }
 
   return response
