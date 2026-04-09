@@ -9,6 +9,7 @@ interface ItemPedido {
   nome: string;
   qtd: number;
   preco: number;
+  detalhes?: string; // Adicionado para suportar sabores/detalhes
 }
 
 interface Pedido {
@@ -155,7 +156,6 @@ export function CozinhaMonitor() {
                     exit={{ opacity: 0, x: -20 }}
                     className="bg-white/5 border border-white/10 p-5 rounded-[2rem] backdrop-blur-sm relative group"
                   >
-                    {/* Botão de Excluir */}
                     <button
                       onClick={() => excluirPedido(pedido.id)}
                       className="absolute top-4 right-4 z-10 w-8 h-8 flex items-center justify-center rounded-full bg-red-500/10 text-red-500 opacity-0 group-hover:opacity-100 transition-all hover:bg-red-500 hover:text-white"
@@ -163,7 +163,6 @@ export function CozinhaMonitor() {
                       ✕
                     </button>
 
-                    {/* Cabeçalho do Card */}
                     <div className="flex justify-between items-start mb-3">
                       <div className="pr-8 w-full">
                         <p className="text-[9px] font-black uppercase text-[#ffcc00] mb-1">
@@ -178,7 +177,6 @@ export function CozinhaMonitor() {
                           {pedido.cliente_nome}
                         </h3>
 
-                        {/* Endereço Detalhado */}
                         {pedido.tipo_pedido === "delivery" && pedido.endereco && (
                           <div className="bg-white/5 p-2 rounded-lg mt-2 border border-white/5">
                             <p className="text-[10px] text-[#ffcc00] font-black uppercase mb-0.5">Endereço:</p>
@@ -197,17 +195,24 @@ export function CozinhaMonitor() {
                       </span>
                     </div>
 
-                    {/* Itens do Pedido */}
-                    <div className="border-t border-white/5 pt-3 mb-4 space-y-1">
-                      {pedido.itens.map((item, i) => (
+                    {/* BLOCO DE ITENS CORRIGIDO E BLINDADO */}
+                    <div className="border-t border-white/5 pt-3 mb-4 space-y-2">
+                      {pedido.itens?.map((item, i) => (
                         <div key={i} className="text-xs font-bold text-white/70">
-                          <span className="text-[#ffcc00] mr-2">{item.qtd}x</span>
+                          <span className="text-[#ffcc00] mr-2">{item.qtd || 1}x</span>
                           {item.nome}
+                          {item.detalhes && (
+                            <p className="text-[9px] text-white/40 italic font-medium ml-6">
+                              {item.detalhes}
+                            </p>
+                          )}
                         </div>
                       ))}
+                      {(!pedido.itens || pedido.itens.length === 0) && (
+                        <p className="text-[10px] text-red-400/50 italic">Nenhum item detalhado</p>
+                      )}
                     </div>
 
-                    {/* Botão de Aviso WhatsApp (Apenas se houver telefone) */}
                     {pedido.cliente_telefone && (
                       <button
                         onClick={() => {
@@ -221,7 +226,6 @@ export function CozinhaMonitor() {
                       </button>
                     )}
 
-                    {/* Botões de Ação de Status */}
                     <div className="flex gap-2">
                       {pedido.status === "novo" && (
                         <button
@@ -254,7 +258,6 @@ export function CozinhaMonitor() {
                 ))}
               </AnimatePresence>
 
-              {/* Estado Vazio para a Coluna */}
               {pedidosColuna.length === 0 && (
                 <div className="py-10 border-2 border-dashed border-white/5 rounded-[2rem] flex items-center justify-center">
                   <span className="text-[9px] uppercase font-black text-white/5 tracking-widest italic">

@@ -11,7 +11,8 @@ import { Header } from "@/app/components/layout/Header";
 import { ProductCard } from "@/app/components/menu/ProductCard";
 import { CheckoutForm } from "@/app/components/cart/CheckoutForm";
 import { Footer } from "@/app/components/layout/Footer";
-import { Produto } from "@/app/types/Index";
+import { Produto, Complemento, ComplementoSelecao } from "@/app/types/Index";
+import { SelectionModal } from "@/app/components/menu/SelectionModal";
 
 type Categoria = {
   id: string;
@@ -28,13 +29,14 @@ function HomeContent() {
 
   const [produtos, setProdutos] = useState<Produto[]>([]);
   const [categorias, setCategorias] = useState<Categoria[]>([]);
+  const [complementos, setComplementos] = useState<Complemento[]>([]); // Estado para os adicionais
   const [carrinho, setCarrinho] = useState<Produto[]>([]);
   const [catAtiva, setCatAtiva] = useState("Todos");
   const [etapa, setEtapa] = useState<"menu" | "checkout">("menu");
   const [animarCarrinho, setAnimarCarrinho] = useState(false);
   const [loading, setLoading] = useState(true);
   const [lojaAberta, setLojaAberta] = useState(true);
-
+  const [produtoSelecionado, setProdutoSelecionado] = useState<Produto | null>(null);
   const [nome, setNome] = useState("");
   const [endereco, setEndereco] = useState("");
   const [tipoEntrega, setTipoEntrega] = useState<"delivery" | "retirada" | "mesa">("delivery");
@@ -57,15 +59,16 @@ function HomeContent() {
     if (mesaURL) setTipoEntrega("mesa");
   }, [mesaURL]);
 
-  // BUSCA NO BANCO
+  // BUSCA NO BANCO ATUALIZADA
   useEffect(() => {
     const carregarDados = async () => {
       try {
         setLoading(true);
-        const [resCat, resProd, resConfig] = await Promise.all([
+        const [resCat, resProd, resConfig, resComp] = await Promise.all([
           supabase.from("categorias").select("*").eq("tenant_id", TENANT_ID_MACIEL).order("ordem", { ascending: true }),
           supabase.from("produtos").select("*").eq("tenant_id", TENANT_ID_MACIEL).order("id", { ascending: false }),
           supabase.from("config_loja").select("esta_aberta").eq("tenant_id", TENANT_ID_MACIEL).single(),
+          supabase.from("complementos").select("*").eq("tenant_id", TENANT_ID_MACIEL) // Busca os complementos
         ]);
 
         if (resCat.error) throw resCat.error;
@@ -73,6 +76,7 @@ function HomeContent() {
 
         setCategorias(resCat.data || []);
         setProdutos(resProd.data || []);
+        setComplementos(resComp.data || []); // Salva os complementos no estado
         if (resConfig.data) setLojaAberta(resConfig.data.esta_aberta);
       } catch (err) {
         console.error("Erro:", err);
@@ -95,11 +99,42 @@ function HomeContent() {
   };
 
   const handleAdd = (p: Produto) => {
+    if (p.unidade_medida === 'bola' || p.unidade_medida === 'kg') {
+      setProdutoSelecionado(p);
+      return;
+    }
+
     setCarrinho((prev) => [...prev, p]);
     setAnimarCarrinho(true);
     toast.success(`${p.nome} adicionado!`, { position: "bottom-center" });
     setTimeout(() => setAnimarCarrinho(false), 300);
   };
+
+const confirmarAdicaoModal = (p: Produto, qtdTotal: number, extras?: ComplementoSelecao[]) => {
+  // 1. Calculamos o preço total somando os extras multiplicado pelas suas quantidades
+  const precoExtras = extras?.reduce((acc, comp) => {
+    return acc + ((comp.preco || 0) * comp.quantidade_selecionada);
+  }, 0) || 0;
+
+  // 2. Criamos uma descrição detalhada: "2x Chocolate, 1x Morango"
+  const descricaoDetalhada = extras?.length 
+    ? extras.map(e => `${e.quantidade_selecionada}x ${e.nome}`).join(', ')
+    : p.descricao;
+
+  const produtoComExtras: Produto = {
+    ...p,
+    // Preço total do item = (preço da base * quantidade de bolas) + adicionais pagos
+    preco: (p.preco * (qtdTotal || 1)) + precoExtras,
+    descricao: descricaoDetalhada,
+  };
+
+  setCarrinho((prev) => [...prev, produtoComExtras]);
+  
+  setAnimarCarrinho(true);
+  setProdutoSelecionado(null);
+  toast.success(`${p.nome} adicionado!`, { position: "bottom-center" });
+  setTimeout(() => setAnimarCarrinho(false), 300);
+};
 
   const handleRemove = (index: number) => {
     setCarrinho((prev) => prev.filter((_, i) => i !== index));
@@ -151,7 +186,9 @@ function HomeContent() {
               <div className="py-20 text-center opacity-20 animate-pulse font-black uppercase text-[10px] tracking-widest">Sincronizando...</div>
             ) : produtosFiltrados.length > 0 ? (
               <AnimatePresence mode="popLayout">
-                {produtosFiltrados.map((p) => <ProductCard key={p.id} produto={p} onAdd={handleAdd} />)}
+                {produtosFiltrados.map((p) => (
+                  <ProductCard key={p.id} produto={p} onAdd={handleAdd} />
+                ))}
               </AnimatePresence>
             ) : (
               <div className="py-20 text-center text-white/20 italic">Nenhum item nesta categoria</div>
@@ -169,7 +206,14 @@ function HomeContent() {
         />
       )}
 
-      {/* 🛒 CARRINHO FLUTUANTE (FIXO NO RODAPÉ) */}
+      <SelectionModal 
+      key={produtoSelecionado?.id || 'vazio'} 
+        produto={produtoSelecionado} 
+        complementos={complementos} 
+        onClose={() => setProdutoSelecionado(null)} 
+        onConfirm={confirmarAdicaoModal}
+      />
+
       {carrinho.length > 0 && etapa === "menu" && (
         <div className="fixed bottom-0 left-0 w-full p-6 bg-gradient-to-t from-[#1a011a] via-[#1a011a]/80 to-transparent z-40">
           <div className="max-w-2xl mx-auto">

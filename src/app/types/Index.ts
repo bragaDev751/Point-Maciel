@@ -11,6 +11,10 @@ export interface Produto {
   image?: string; 
   emoji?: string;
   tenant_id?: string; 
+  hora_inicio?: string; 
+  hora_fim?: string;
+  disponivel_sempre?: boolean;
+  unidade_medida?: string;
 }
 
 export interface Categoria {
@@ -19,4 +23,14 @@ export interface Categoria {
   emoji: string;
   ordem?: number; 
   tenant_id?: string;
+}
+export interface Complemento {
+  id: string;
+  nome: string;
+  preco: number;
+  categoria_pai: string;
+  tenant_id: string;
+}
+export interface ComplementoSelecao extends Complemento {
+  quantidade_selecionada: number;
 }
