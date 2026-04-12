@@ -49,6 +49,19 @@ export const CheckoutForm = ({
 
   const [pagamento, setPagamento] = useState<PagamentoMetodo>("Pix");
   const [trocoPara, setTrocoPara] = useState("");
+  const [taxasDisponiveis, setTaxasDisponiveis] = useState<
+    { id: string; bairro: string; valor: number }[]
+  >([]);
+  const [taxaEntrega, setTaxaEntrega] = useState(0);
+  // ===== PIX =====
+  const [pedidoFinalizado, setPedidoFinalizado] = useState<{
+    id: string;
+    msg: string;
+  } | null>(null);
+
+  const [copiou, setCopiou] = useState(false);
+
+  const CHAVE_PIX_MACIEL = "05746347388";
 
   // ================= ADIÇÃO: ESTADOS DE FIDELIDADE =================
   const [pontosDisponiveis, setPontosDisponiveis] = useState(0);
@@ -59,6 +72,9 @@ export const CheckoutForm = ({
   const totalFinal = usarDescontoFidelidade
     ? Math.max(total - VALOR_DESCONTO, 0)
     : total;
+
+  const totalFinalComTaxa =
+    tipoEntrega === "delivery" ? totalFinal + taxaEntrega : totalFinal;
 
   useEffect(() => {
     const buscarPontos = async () => {
@@ -86,6 +102,19 @@ export const CheckoutForm = ({
       setPagamento("Mesa");
     }
   }, [mesaURL, setTipoEntrega]);
+  useEffect(() => {
+    const buscarTaxas = async () => {
+      const { data } = await supabase
+        .from("taxas_entrega")
+        .select("*")
+        .eq("tenant_id", TENANT_ID_MACIEL)
+        .order("bairro", { ascending: true });
+
+      if (data) setTaxasDisponiveis(data);
+    };
+
+    buscarTaxas();
+  }, []);
 
   const formatarWhats = () => {
     let msg = `*🚀 NOVO PEDIDO - POINT MACIEL*%0A`;
@@ -96,8 +125,9 @@ export const CheckoutForm = ({
     if (tipoEntrega === "mesa") msg += `📍 *Mesa:* ${mesaURL}%0A`;
     if (tipoEntrega === "delivery") {
       msg += `🛵 *DELIVERY*%0A`;
-      msg += `*Endereço:* ${endereco}, ${numero}%0A`;
       msg += `*Bairro:* ${bairro}%0A`;
+      msg += `*Taxa Entrega:* R$ ${taxaEntrega.toFixed(2)}%0A`;
+      msg += `*Endereço:* ${endereco}, ${numero}%0A`;
       if (referencia) msg += `*Ref:* ${referencia}%0A`;
     }
     if (tipoEntrega === "retirada") msg += `🥡 *RETIRADA NO LOCAL*%0A`;
@@ -108,7 +138,6 @@ export const CheckoutForm = ({
       msg += `*Troco para:* R$ ${Number(trocoPara).toFixed(2)}%0A`;
     }
 
-    // ADIÇÃO: Info desconto no Whats
     if (usarDescontoFidelidade) {
       msg += `*DESCONTO APLICADO:* - R$ ${VALOR_DESCONTO.toFixed(2)} (Fidelidade)%0A`;
     }
@@ -123,65 +152,60 @@ export const CheckoutForm = ({
     });
 
     msg += `---------------------------------------%0A`;
-    msg += `*TOTAL: R$ ${totalFinal.toFixed(2)}*`;
+    msg += `**TOTAL FINAL: R$ ${totalFinalComTaxa.toFixed(2)}*`;
     return msg;
   };
-
+  const handleCopiarPix = () => {
+    navigator.clipboard.writeText(CHAVE_PIX_MACIEL);
+    setCopiou(true);
+    setTimeout(() => setCopiou(false), 2000);
+  };
   const handleFinalizar = async () => {
-  if (!lojaAberta) return alert("A loja está fechada.");
-  if (!nome.trim()) return alert("Digite seu nome.");
-  if (!telefone.trim()) return alert("Informe seu WhatsApp.");
+    if (!lojaAberta) return alert("A loja está fechada.");
+    if (!nome.trim()) return alert("Digite seu nome.");
+    if (!telefone.trim()) return alert("Informe seu WhatsApp.");
 
-  const telLimpo = telefone.replace(/\D/g, "");
-  let enderecoCompleto = "";
+    const telLimpo = telefone.replace(/\D/g, "");
+    let enderecoCompleto = "";
 
-  if (tipoEntrega === "delivery") {
-    if (!endereco || !bairro)
-      return alert("Rua e bairro são obrigatórios.");
-
-    enderecoCompleto = `${endereco}, Nº ${numero} - ${bairro}${
-      referencia ? ` (Ref: ${referencia})` : ""
-    }`;
-  } else if (tipoEntrega === "retirada") {
-    enderecoCompleto = "RETIRADA NO LOCAL";
-  } else {
-    enderecoCompleto = `MESA ${mesaURL}`;
-  }
-
-  setIsEnviando(true);
-
-  try {
-    // 🔥 Debita pontos se usar fidelidade
-    if (usarDescontoFidelidade) {
-      await supabase
-        .from("fidelidade")
-        .update({
-          pontos_acumulados:
-            pontosDisponiveis - PONTOS_NECESSARIOS,
-        })
-        .eq("tenant_id", TENANT_ID_MACIEL)
-        .eq("cliente_telefone", telLimpo);
+    if (tipoEntrega === "delivery") {
+      if (!endereco || !bairro || taxaEntrega === 0)
+        return alert("Selecione um bairro válido.");
+      enderecoCompleto = `${endereco}, Nº ${numero} - ${bairro}${
+        referencia ? ` (Ref: ${referencia})` : ""
+      }`;
+    } else if (tipoEntrega === "retirada") {
+      enderecoCompleto = "RETIRADA NO LOCAL";
+    } else {
+      enderecoCompleto = `MESA ${mesaURL}`;
     }
 
-    // 🧾 Cria pedido
-    const { data: novoPedido, error: errorPedido } =
-      await supabase
+    setIsEnviando(true);
+
+    try {
+      if (usarDescontoFidelidade) {
+        await supabase
+          .from("fidelidade")
+          .update({
+            pontos_acumulados: pontosDisponiveis - PONTOS_NECESSARIOS,
+          })
+          .eq("tenant_id", TENANT_ID_MACIEL)
+          .eq("cliente_telefone", telLimpo);
+      }
+
+      const { data: novoPedido, error: errorPedido } = await supabase
         .from("pedidos")
         .insert([
           {
             cliente_nome: nome,
             cliente_telefone: telLimpo,
             tipo_pedido: tipoEntrega,
-            mesa_numero:
-              tipoEntrega === "mesa" ? mesaURL : null,
+            mesa_numero: tipoEntrega === "mesa" ? mesaURL : null,
             endereco: enderecoCompleto,
-            total_pedido: totalFinal,
+            total_pedido: totalFinalComTaxa,
             status: "novo",
             metodo_pagamento:
-              pagamento +
-              (trocoPara
-                ? ` (Troco p/ ${trocoPara})`
-                : ""),
+              pagamento + (trocoPara ? ` (Troco p/ ${trocoPara})` : ""),
             tenant_id: TENANT_ID_MACIEL,
             itens: carrinho.map((i) => ({
               id: i.id,
@@ -195,32 +219,77 @@ export const CheckoutForm = ({
         .select()
         .single();
 
-    if (errorPedido) throw errorPedido;
+      if (errorPedido) throw errorPedido;
 
-    if (novoPedido) {
-      const itensParaInserir = carrinho.map((item) => ({
-        pedido_id: novoPedido.id,
-        produto_nome: item.nome,
-        quantidade: 1,
-        preco_unitario: item.preco,
-      }));
+      if (novoPedido) {
+        const itensParaInserir = carrinho.map((item) => ({
+          pedido_id: novoPedido.id,
+          produto_nome: item.nome,
+          quantidade: 1,
+          preco_unitario: item.preco,
+        }));
 
-      await supabase.from("pedido_itens").insert(itensParaInserir);
+        await supabase.from("pedido_itens").insert(itensParaInserir);
+      }
+      const mensagem = formatarWhats();
+      const linkWhatsapp = `https://wa.me/5588981277642?text=${mensagem}`;
+
+      if (pagamento === "Pix") {
+  setPedidoFinalizado({
+    id: novoPedido.id,
+    msg: mensagem,
+  });
+  return; 
+} else {
+  onConfirm();
+  window.location.href = linkWhatsapp;
+}
+
+      
+    } catch (err) {
+      console.error(err);
+      alert("Erro ao enviar pedido.");
+    } finally {
+      setIsEnviando(false);
     }
-    const mensagem = formatarWhats();
-    const linkWhatsapp = `https://wa.me/5588981277642?text=${mensagem}`;
+  };
+  if (pedidoFinalizado) {
+    return (
+      <motion.div
+        initial={{ opacity: 0, scale: 0.9 }}
+        animate={{ opacity: 1, scale: 1 }}
+        className="p-4 max-w-md mx-auto text-center space-y-6 pt-10"
+      >
+        <div className="bg-[#1a011a] p-8 rounded-[3rem] border border-yellow-400/20 space-y-6">
+          <h2 className="text-2xl font-black uppercase">Pagamento via Pix</h2>
 
-    onConfirm();
-    window.location.href = linkWhatsapp;
+          <img src="/qrcode-pix.png" className="w-48 h-48 mx-auto" />
 
-  } catch (err) {
-    console.error(err);
-    alert("Erro ao enviar pedido.");
-  } finally {
-    setIsEnviando(false);
+          <div className="bg-white/5 p-4 rounded-xl flex justify-between items-center">
+            <span className="text-xs">{CHAVE_PIX_MACIEL}</span>
+
+            <button onClick={handleCopiarPix}>
+              {copiou ? "Copiado!" : "Copiar"}
+            </button>
+          </div>
+
+          <div className="text-xl font-bold text-yellow-400">
+            R$ {totalFinalComTaxa.toFixed(2)}
+          </div>
+
+          <button
+            onClick={() => {
+              onConfirm();
+              window.location.href = `https://wa.me/5588981277642?text=${pedidoFinalizado.msg}`;
+            }}
+            className="w-full bg-green-500 text-white p-4 rounded-xl"
+          >
+            Já paguei
+          </button>
+        </div>
+      </motion.div>
+    );
   }
-};
-
   return (
     <motion.section
       initial={{ opacity: 0, y: 15 }}
@@ -366,12 +435,29 @@ export const CheckoutForm = ({
                 placeholder="Rua exemplo"
               />
               <div className="grid grid-cols-2 gap-4">
-                <Input
-                  label="Bairro"
-                  value={bairro}
-                  onChange={setBairro}
-                  placeholder="Seu bairro"
-                />
+                <div className="space-y-1">
+                  <label className="text-[9px] font-black uppercase text-white/30 ml-4 tracking-widest">
+                    Bairro
+                  </label>
+                  <select
+                    value={bairro}
+                    onChange={(e) => {
+                      const sel = taxasDisponiveis.find(
+                        (t) => t.bairro === e.target.value,
+                      );
+                      setBairro(e.target.value);
+                      setTaxaEntrega(sel ? sel.valor : 0);
+                    }}
+                    className="w-full bg-white/5 border border-white/10 p-4 rounded-2xl text-white text-sm font-bold outline-none focus:border-yellow-400"
+                  >
+                    <option value="">Selecione seu bairro...</option>
+                    {taxasDisponiveis.map((t) => (
+                      <option key={t.id} value={t.bairro} className="bg-black">
+                        {t.bairro} - R$ {t.valor.toFixed(2)}
+                      </option>
+                    ))}
+                  </select>
+                </div>
                 <Input
                   label="Número"
                   value={numero}
@@ -395,7 +481,7 @@ export const CheckoutForm = ({
           </h3>
           <div className="grid grid-cols-1 gap-2">
             {[
-              { id: "Pix", label: "PIX", icon: <Smartphone size={16} /> },
+              { id: "Pix", label: "PIX", icon: <QrCode size={16} /> },
               {
                 id: "Cartão (Entregador)",
                 label: "Cartão (na entrega)",
@@ -443,6 +529,16 @@ export const CheckoutForm = ({
         </div>
 
         <div className="pt-4 border-t border-white/5">
+          {tipoEntrega === "delivery" && taxaEntrega > 0 && (
+            <div className="flex justify-between px-2 mb-1">
+              <span className="text-[10px] text-white/40 uppercase">
+                Taxa de Entrega
+              </span>
+              <span className="text-xs text-white font-bold">
+                R$ {taxaEntrega.toFixed(2)}
+              </span>
+            </div>
+          )}
           <div className="flex justify-between items-end mb-4 px-2">
             <span className="text-[10px] font-black uppercase text-white/30">
               Total do Pedido
@@ -454,7 +550,7 @@ export const CheckoutForm = ({
                 </span>
               )}
               <div className="text-3xl font-black text-yellow-400 italic">
-                R$ {totalFinal.toFixed(2)}
+                R$ {totalFinalComTaxa.toFixed(2)}{" "}
               </div>
             </div>
           </div>

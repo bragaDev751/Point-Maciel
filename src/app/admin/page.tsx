@@ -13,13 +13,12 @@ import { TableManager } from '@/app/components/admin/TableManager';
 import { Dashboard } from '@/app/components/admin/Dashboard';
 import { CozinhaMonitor } from '@/app/components/admin/CozinhaMonitor';
 import { ComplementosManager } from '@/app/components/admin/ComplementosManager';
-
+import { TaxasManager } from '@/app/components/admin/TaxasManager'; 
 // Supabase
 import { supabase, TENANT_ID_MACIEL } from '@/lib/supabase';
 
 // --- TIPOS ---
-type AbaTipo = 'relatorios' | 'cozinha' | 'produtos' | 'complementos' | 'mesas';
-
+type AbaTipo = 'relatorios' | 'cozinha' | 'produtos' | 'complementos' | 'mesas' | 'entregas';
 interface Categoria {
   id: string;
   nome: string;
@@ -227,6 +226,7 @@ export default function AdminPage() {
             {renderBotaoNav('produtos', '🍔', 'Produtos')}
             {renderBotaoNav('complementos', '🍦', 'Extras')}
             {renderBotaoNav('mesas', '📍', 'Mesas')}
+            {renderBotaoNav('entregas', '🛵', 'Taxas')}
           </nav>
 
           <button 
@@ -249,6 +249,7 @@ export default function AdminPage() {
             {abaAtiva === 'cozinha' && <CozinhaMonitor />}
             {abaAtiva === 'mesas' && <TableManager />}
             {abaAtiva === 'complementos' && <ComplementosManager />}
+            {abaAtiva === 'entregas' && <TaxasManager />}
 
             {abaAtiva === 'produtos' && (
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">

@@ -6,7 +6,15 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Printer } from "lucide-react";
 
 /* ================= TYPES ================= */
+const formatarWhats = (telefone: string) => {
+  let limpo = telefone.replace(/\D/g, "");
 
+  if (!limpo.startsWith("55") && limpo.length >= 10 && limpo.length <= 11) {
+    limpo = "55" + limpo;
+  }
+
+  return limpo;
+};
 interface ItemPedido {
   id: string;
   nome: string;
