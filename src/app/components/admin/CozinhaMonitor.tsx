@@ -21,7 +21,6 @@ interface ItemPedido {
   qtd: number;
   preco: number;
   detalhes?: string;
-  
 }
 
 type StatusPedido = "novo" | "preparando" | "pronto" | "finalizado";
@@ -40,6 +39,7 @@ interface Pedido {
   metodo_pagamento?: string;
   created_at: string;
   pontos_processados: boolean;
+  desconto_fidelidade?: number;
 }
 
 export function CozinhaMonitor() {
@@ -176,57 +176,65 @@ export function CozinhaMonitor() {
     }
   };
 
-const excluirPedido = async (pedido: Pedido) => {
-  if (!window.confirm("Deseja excluir permanentemente este pedido? Se pontos foram gerados, eles serão estornados.")) return;
+  const excluirPedido = async (pedido: Pedido) => {
+    if (
+      !window.confirm(
+        "Deseja excluir permanentemente este pedido? Se pontos foram gerados, eles serão estornados.",
+      )
+    )
+      return;
 
-  try {
-    // 1. Verifica se deve estornar (Só se a trava estiver TRUE e houver telefone)
-    if (pedido.pontos_processados && pedido.cliente_telefone) {
-      const pontosParaRemover = Math.floor(pedido.total_pedido);
+    try {
+      // 1. Verifica se deve estornar (Só se a trava estiver TRUE e houver telefone)
+      if (pedido.pontos_processados && pedido.cliente_telefone) {
+        const pontosParaRemover = Math.floor(pedido.total_pedido);
 
-      // Busca saldo atual do cliente
-      const { data: fidelidade, error: errorBusca } = await supabase
-        .from("fidelidade")
-        .select("pontos_acumulados")
-        .eq("tenant_id", TENANT_ID_MACIEL)
-        .eq("cliente_telefone", pedido.cliente_telefone)
-        .maybeSingle();
-
-      if (errorBusca) throw errorBusca;
-
-      if (fidelidade) {
-        // Calcula novo saldo (garantindo que não seja menor que zero)
-        const novoSaldo = Math.max(0, fidelidade.pontos_acumulados - pontosParaRemover);
-        
-        const { error: errorEstorno } = await supabase
+        // Busca saldo atual do cliente
+        const { data: fidelidade, error: errorBusca } = await supabase
           .from("fidelidade")
-          .update({ 
-            pontos_acumulados: novoSaldo,
-            updated_at: new Date().toISOString()
-          })
+          .select("pontos_acumulados")
           .eq("tenant_id", TENANT_ID_MACIEL)
-          .eq("cliente_telefone", pedido.cliente_telefone);
+          .eq("cliente_telefone", pedido.cliente_telefone)
+          .maybeSingle();
 
-        if (errorEstorno) throw errorEstorno;
-        console.log(`📉 Estorno realizado: -${pontosParaRemover} pontos.`);
+        if (errorBusca) throw errorBusca;
+
+        if (fidelidade) {
+          // Calcula novo saldo (garantindo que não seja menor que zero)
+          const novoSaldo = Math.max(
+            0,
+            fidelidade.pontos_acumulados - pontosParaRemover,
+          );
+
+          const { error: errorEstorno } = await supabase
+            .from("fidelidade")
+            .update({
+              pontos_acumulados: novoSaldo,
+              updated_at: new Date().toISOString(),
+            })
+            .eq("tenant_id", TENANT_ID_MACIEL)
+            .eq("cliente_telefone", pedido.cliente_telefone);
+
+          if (errorEstorno) throw errorEstorno;
+          console.log(`📉 Estorno realizado: -${pontosParaRemover} pontos.`);
+        }
       }
+
+      // 2. Deleta o pedido do banco
+      const { error: errorDelete } = await supabase
+        .from("pedidos")
+        .delete()
+        .eq("id", pedido.id)
+        .eq("tenant_id", TENANT_ID_MACIEL);
+
+      if (errorDelete) throw errorDelete;
+
+      // O Realtime (useEffect) já removerá o pedido da lista automaticamente.
+    } catch (err) {
+      console.error("Erro na exclusão/estorno:", err);
+      alert("Falha ao excluir o pedido. Tente novamente.");
     }
-
-    // 2. Deleta o pedido do banco
-    const { error: errorDelete } = await supabase
-      .from("pedidos")
-      .delete()
-      .eq("id", pedido.id)
-      .eq("tenant_id", TENANT_ID_MACIEL);
-
-    if (errorDelete) throw errorDelete;
-
-    // O Realtime (useEffect) já removerá o pedido da lista automaticamente.
-  } catch (err) {
-    console.error("Erro na exclusão/estorno:", err);
-    alert("Falha ao excluir o pedido. Tente novamente.");
-  }
-};
+  };
 
   /* ================= PRINT FUNCTION (Layout Térmico) ================= */
 
@@ -340,6 +348,13 @@ const excluirPedido = async (pedido: Pedido) => {
                       exit={{ opacity: 0, x: -20 }}
                       className="bg-white/5 border border-white/10 p-5 rounded-[2rem] backdrop-blur-sm relative group"
                     >
+                      {/* 🎁 BADGE FIDELIDADE */}
+                      {pedido.desconto_fidelidade &&
+                        pedido.desconto_fidelidade > 0 && (
+                          <div className="absolute -top-2 -right-2 bg-purple-600 text-white text-[8px] font-black px-3 py-1 rounded-full shadow-lg z-10 animate-bounce">
+                            🎁 FIDELIDADE RESGATADA
+                          </div>
+                        )}
                       {/* AÇÕES NO TOPO (Imprimir e Excluir) */}
                       <div className="absolute top-4 right-4 flex gap-2 z-20">
                         <button
@@ -399,7 +414,7 @@ const excluirPedido = async (pedido: Pedido) => {
                               </span>
                               {item.nome}
                               {item.detalhes && (
-                                <p className="text-[9px] text-white/40 italic font-medium ml-6">
+                                <p className="text-[10px] text-white/40 italic font-medium ml-6 mt-1 whitespace-pre-line leading-relaxed bg-black/20 p-2 rounded-lg border border-white/5">
                                   {item.detalhes}
                                 </p>
                               )}
@@ -418,7 +433,7 @@ const excluirPedido = async (pedido: Pedido) => {
                           onClick={() => {
                             const msg = `Olá ${pedido.cliente_nome}, seu pedido está pronto! 🛵`;
                             window.open(
-                              `https://wa.me/${pedido.cliente_telefone?.replace(/\D/g, "")}?text=${encodeURIComponent(msg)}`,
+                              `https://wa.me/${formatarWhats(pedido.cliente_telefone!)}?text=${encodeURIComponent(msg)}`,
                               "_blank",
                             );
                           }}
@@ -429,34 +444,38 @@ const excluirPedido = async (pedido: Pedido) => {
                       )}
 
                       {/* BOTÕES DE STATUS */}
-<div className="flex gap-2">
-  {pedido.status === "novo" && (
-    <button
-      onClick={() => atualizarStatus(pedido, "preparando")}
-      className="w-full bg-blue-500 py-3 rounded-xl text-[10px] font-black uppercase text-white hover:bg-blue-600 shadow-lg shadow-blue-500/20 transition-all active:scale-95"
-    >
-      👨‍🍳 Preparar
-    </button>
-  )}
+                      <div className="flex gap-2">
+                        {pedido.status === "novo" && (
+                          <button
+                            onClick={() =>
+                              atualizarStatus(pedido, "preparando")
+                            }
+                            className="w-full bg-blue-500 py-3 rounded-xl text-[10px] font-black uppercase text-white hover:bg-blue-600 shadow-lg shadow-blue-500/20 transition-all active:scale-95"
+                          >
+                            👨‍🍳 Preparar
+                          </button>
+                        )}
 
-  {pedido.status === "preparando" && (
-    <button
-      onClick={() => atualizarStatus(pedido, "pronto")}
-      className="w-full bg-orange-500 py-3 rounded-xl text-[10px] font-black uppercase text-white hover:bg-orange-600 shadow-lg shadow-orange-500/20 transition-all active:scale-95 animate-pulse-subtle"
-    >
-      🔔 Pronto para Entrega
-    </button>
-  )}
+                        {pedido.status === "preparando" && (
+                          <button
+                            onClick={() => atualizarStatus(pedido, "pronto")}
+                            className="w-full bg-orange-500 py-3 rounded-xl text-[10px] font-black uppercase text-white hover:bg-orange-600 shadow-lg shadow-orange-500/20 transition-all active:scale-95 animate-pulse-subtle"
+                          >
+                            🔔 Pronto para Entrega
+                          </button>
+                        )}
 
-  {pedido.status === "pronto" && (
-    <button
-      onClick={() => atualizarStatus(pedido, "finalizado")}
-      className="w-full bg-green-500 py-3 rounded-xl text-[10px] font-black uppercase text-black hover:bg-green-600 shadow-lg shadow-green-500/20 transition-all active:scale-95 font-bold"
-    >
-      🏁 Finalizar e Pontuar
-    </button>
-  )}
-</div>
+                        {pedido.status === "pronto" && (
+                          <button
+                            onClick={() =>
+                              atualizarStatus(pedido, "finalizado")
+                            }
+                            className="w-full bg-green-500 py-3 rounded-xl text-[10px] font-black uppercase text-black hover:bg-green-600 shadow-lg shadow-green-500/20 transition-all active:scale-95 font-bold"
+                          >
+                            🏁 Finalizar e Pontuar
+                          </button>
+                        )}
+                      </div>
                     </motion.div>
                   );
                 })}

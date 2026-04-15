@@ -147,7 +147,9 @@ export const CheckoutForm = ({
 
     carrinho.forEach((item, index) => {
       msg += `*${index + 1}. ${item.nome}*%0A`;
-      if (item.descricao) msg += `   _{${item.descricao}}_%0A`;
+      if (item.descricao) {
+        msg += `   ➕ ${item.descricao}%0A`;
+      }
       msg += `   R$ ${item.preco.toFixed(2)}%0A%0A`;
     });
 
@@ -235,17 +237,15 @@ export const CheckoutForm = ({
       const linkWhatsapp = `https://wa.me/5588981277642?text=${mensagem}`;
 
       if (pagamento === "Pix") {
-  setPedidoFinalizado({
-    id: novoPedido.id,
-    msg: mensagem,
-  });
-  return; 
-} else {
-  onConfirm();
-  window.location.href = linkWhatsapp;
-}
-
-      
+        setPedidoFinalizado({
+          id: novoPedido.id,
+          msg: mensagem,
+        });
+        return;
+      } else {
+        onConfirm();
+        window.location.href = linkWhatsapp;
+      }
     } catch (err) {
       console.error(err);
       alert("Erro ao enviar pedido.");
@@ -329,9 +329,11 @@ export const CheckoutForm = ({
                     <p className="font-black text-sm uppercase italic">
                       {item.nome}
                     </p>
-                    <p className="text-white/40 text-[10px] uppercase leading-tight max-w-[200px]">
-                      {item.descricao}
-                    </p>
+                    {item.descricao && (
+                      <p className="text-[10px] text-yellow-400 font-bold leading-tight max-w-[200px]">
+                        + {item.descricao}
+                      </p>
+                    )}
                   </div>
                 </div>
                 <button

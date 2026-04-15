@@ -15,8 +15,9 @@ interface ProdutoMutation {
   hora_inicio?: string;
   hora_fim?: string;
   disponivel_sempre?: boolean;
-  unidade_medida?: string; 
-  
+  unidade_medida?: string;
+  qtd_sabores_gratis?: number;
+  qtd_extras_max?: number;
 }
 
 interface CategoriaDB {
@@ -36,7 +37,10 @@ export const ProductForm = () => {
   const [disponivelSempre, setDisponivelSempre] = useState(true);
 
   // Unidade de medida
-  const [unidadeMedida, setUnidadeMedida] = useState('unid');
+  const [unidadeMedida, setUnidadeMedida] = useState("unid");
+
+  const [qtdSabores, setQtdSabores] = useState("0");
+  const [qtdExtras, setQtdExtras] = useState("0");
 
   const [listaCategorias, setListaCategorias] = useState<CategoriaDB[]>([]);
   const [imageFile, setImageFile] = useState<File | null>(null);
@@ -67,7 +71,8 @@ export const ProductForm = () => {
 
     carregarCategorias();
     window.addEventListener("refreshCategories", carregarCategorias);
-    return () => window.removeEventListener("refreshCategories", carregarCategorias);
+    return () =>
+      window.removeEventListener("refreshCategories", carregarCategorias);
   }, [categoria]);
 
   useEffect(() => {
@@ -81,13 +86,14 @@ export const ProductForm = () => {
       setCategoria(p.categoria_nome);
       setDescricao(p.descricao || "");
       setPreviewUrl(p.image || p.imagem_url || null);
-      
-      setHoraInicio(p.hora_inicio?.slice(0, 5) || '00:00');
-      setHoraFim(p.hora_fim?.slice(0, 5) || '23:59');
-      setDisponivelSempre(p.disponivel_sempre ?? true);
-      
-      setUnidadeMedida(p.unidade_medida || 'unid');
 
+      setHoraInicio(p.hora_inicio?.slice(0, 5) || "00:00");
+      setHoraFim(p.hora_fim?.slice(0, 5) || "23:59");
+      setDisponivelSempre(p.disponivel_sempre ?? true);
+
+      setUnidadeMedida(p.unidade_medida || "unid");
+      setQtdSabores(p.qtd_sabores_gratis?.toString() || "0");
+      setQtdExtras(p.qtd_extras_max?.toString() || "0");
       window.scrollTo({ top: 0, behavior: "smooth" });
     };
 
@@ -102,10 +108,12 @@ export const ProductForm = () => {
     setDescricao("");
     setImageFile(null);
     setPreviewUrl(null);
-    setHoraInicio('00:00');
-    setHoraFim('23:59');
+    setHoraInicio("00:00");
+    setHoraFim("23:59");
     setDisponivelSempre(true);
-    setUnidadeMedida('unid');
+    setUnidadeMedida("unid");
+    setQtdSabores("0");
+    setQtdExtras("0");
 
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
@@ -161,8 +169,11 @@ export const ProductForm = () => {
         hora_inicio: hInicio,
         hora_fim: hFim,
         disponivel_sempre: disponivelSempre,
-        unidade_medida: unidadeMedida, // Novo campo salvo aqui
-        image: imageUrl ?? undefined
+        unidade_medida: unidadeMedida,
+        image: imageUrl ?? undefined,
+
+        qtd_sabores_gratis: parseInt(qtdSabores),
+        qtd_extras_max: parseInt(qtdExtras),
       };
 
       const { error } = editandoId
@@ -178,10 +189,9 @@ export const ProductForm = () => {
       toast.success(editandoId ? "Item atualizado!" : "Item adicionado!");
       cancelarEdicao();
       window.dispatchEvent(new Event("refreshProducts"));
-      
     } catch (error: unknown) {
       // eslint-disable-next-line no-console
-      console.dir(error); 
+      console.dir(error);
       let mensagem = "Erro desconhecido";
       if (error instanceof Error) mensagem = error.message;
       toast.error(`Erro: ${mensagem}`);
@@ -210,13 +220,15 @@ export const ProductForm = () => {
         )}
 
         <div className="space-y-2">
-            <label className="text-[10px] uppercase font-black text-white/30 ml-2">Nome do Produto</label>
-            <input
-              placeholder="Ex: Burger Clássico"
-              value={nome}
-              onChange={(e) => setNome(e.target.value)}
-              className="w-full bg-white/5 border border-white/10 p-5 rounded-2xl outline-none focus:border-[#ffcc00] transition-all text-white font-bold"
-            />
+          <label className="text-[10px] uppercase font-black text-white/30 ml-2">
+            Nome do Produto
+          </label>
+          <input
+            placeholder="Ex: Burger Clássico"
+            value={nome}
+            onChange={(e) => setNome(e.target.value)}
+            className="w-full bg-white/5 border border-white/10 p-5 rounded-2xl outline-none focus:border-[#ffcc00] transition-all text-white font-bold"
+          />
         </div>
 
         <div className="space-y-2">
@@ -233,28 +245,34 @@ export const ProductForm = () => {
 
         <div className="bg-black/20 p-6 rounded-[2rem] border border-white/5 space-y-4">
           <div className="flex items-center justify-between px-2">
-             <label className="flex items-center gap-3 text-xs font-black uppercase text-white/50 cursor-pointer group">
-                <input
-                  type="checkbox"
-                  className="w-5 h-5 accent-[#ffcc00] rounded-lg"
-                  checked={disponivelSempre}
-                  onChange={() => setDisponivelSempre(!disponivelSempre)}
-                />
-                <span className="group-hover:text-white transition-colors">Disponível o dia todo</span>
-              </label>
-              <span className="text-[9px] bg-white/5 px-2 py-1 rounded-full text-white/20 font-bold uppercase">Relógio</span>
+            <label className="flex items-center gap-3 text-xs font-black uppercase text-white/50 cursor-pointer group">
+              <input
+                type="checkbox"
+                className="w-5 h-5 accent-[#ffcc00] rounded-lg"
+                checked={disponivelSempre}
+                onChange={() => setDisponivelSempre(!disponivelSempre)}
+              />
+              <span className="group-hover:text-white transition-colors">
+                Disponível o dia todo
+              </span>
+            </label>
+            <span className="text-[9px] bg-white/5 px-2 py-1 rounded-full text-white/20 font-bold uppercase">
+              Relógio
+            </span>
           </div>
 
           <AnimatePresence>
             {!disponivelSempre && (
-              <motion.div 
-                initial={{ opacity: 0, height: 0 }} 
-                animate={{ opacity: 1, height: 'auto' }}
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: "auto" }}
                 exit={{ opacity: 0, height: 0 }}
                 className="grid grid-cols-2 gap-4 pt-2"
               >
                 <div className="space-y-2">
-                  <label className="text-[9px] font-black uppercase text-white/20 ml-2">Hora Início</label>
+                  <label className="text-[9px] font-black uppercase text-white/20 ml-2">
+                    Hora Início
+                  </label>
                   <input
                     type="time"
                     value={horaInicio}
@@ -263,7 +281,9 @@ export const ProductForm = () => {
                   />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-[9px] font-black uppercase text-white/20 ml-2">Hora Fim</label>
+                  <label className="text-[9px] font-black uppercase text-white/20 ml-2">
+                    Hora Fim
+                  </label>
                   <input
                     type="time"
                     value={horaFim}
@@ -277,7 +297,10 @@ export const ProductForm = () => {
         </div>
 
         <div className="space-y-2">
-          <label className="text-[10px] uppercase font-black text-white/30 ml-2"> Foto do Produto </label>
+          <label className="text-[10px] uppercase font-black text-white/30 ml-2">
+            {" "}
+            Foto do Produto{" "}
+          </label>
           <input
             type="file"
             accept="image/*"
@@ -286,10 +309,38 @@ export const ProductForm = () => {
             className="w-full bg-white/5 border border-white/10 p-4 rounded-2xl text-xs text-white/40 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-black file:bg-[#ffcc00] file:text-[#3b013b]"
           />
         </div>
+        <div className="grid grid-cols-2 gap-4 bg-white/5 p-6 rounded-[2rem] border border-white/5">
+          <div className="space-y-2">
+            <label className="text-[10px] uppercase font-black text-[#ffcc00] ml-2">
+              Limite de Sabores
+            </label>
+            <input
+              type="number"
+              value={qtdSabores}
+              onChange={(e) => setQtdSabores(e.target.value)}
+              className="w-full bg-black/20 border border-white/10 p-4 rounded-xl text-white font-bold"
+              placeholder="Ex: 3"
+            />
+          </div>
 
+          <div className="space-y-2">
+            <label className="text-[10px] uppercase font-black text-[#ffcc00] ml-2">
+              Limite de Extras
+            </label>
+            <input
+              type="number"
+              value={qtdExtras}
+              onChange={(e) => setQtdExtras(e.target.value)}
+              className="w-full bg-black/20 border border-white/10 p-4 rounded-xl text-white font-bold"
+              placeholder="Ex: 5"
+            />
+          </div>
+        </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="space-y-2">
-            <label className="text-[10px] uppercase font-black text-white/30 ml-2">Preço (R$)</label>
+            <label className="text-[10px] uppercase font-black text-white/30 ml-2">
+              Preço (R$)
+            </label>
             <input
               type="number"
               step="0.01"
@@ -301,7 +352,9 @@ export const ProductForm = () => {
           </div>
 
           <div className="space-y-2">
-            <label className="text-[10px] uppercase font-black text-white/30 ml-2">Unidade</label>
+            <label className="text-[10px] uppercase font-black text-white/30 ml-2">
+              Unidade
+            </label>
             <select
               value={unidadeMedida}
               onChange={(e) => setUnidadeMedida(e.target.value)}
@@ -314,14 +367,18 @@ export const ProductForm = () => {
           </div>
 
           <div className="space-y-2">
-            <label className="text-[10px] uppercase font-black text-white/30 ml-2">Categoria</label>
+            <label className="text-[10px] uppercase font-black text-white/30 ml-2">
+              Categoria
+            </label>
             <select
               value={categoria}
               onChange={(e) => setCategoria(e.target.value)}
               className="w-full bg-[#1a011a] border border-white/10 p-5 rounded-2xl outline-none focus:border-[#ffcc00] text-white font-bold appearance-none"
             >
               {listaCategorias.map((cat) => (
-                <option key={cat.id} value={cat.nome}>{cat.nome}</option>
+                <option key={cat.id} value={cat.nome}>
+                  {cat.nome}
+                </option>
               ))}
             </select>
           </div>
@@ -333,7 +390,11 @@ export const ProductForm = () => {
             disabled={uploading}
             className="flex-[2] bg-[#ffcc00] text-[#3b013b] p-5 rounded-[1.5rem] font-black uppercase text-xs tracking-widest active:scale-95 transition-all shadow-xl shadow-[#ffcc00]/10 disabled:opacity-50"
           >
-            {uploading ? "Processando..." : editandoId ? "Salvar Alterações" : "Cadastrar no Cardápio"}
+            {uploading
+              ? "Processando..."
+              : editandoId
+                ? "Salvar Alterações"
+                : "Cadastrar no Cardápio"}
           </button>
 
           {editandoId && (

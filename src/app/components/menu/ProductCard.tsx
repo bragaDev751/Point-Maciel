@@ -11,7 +11,6 @@ export const ProductCard = ({ produto, onAdd }: ProductCardProps) => {
   
   const estaDisponivelAgora = () => {
     if (produto.disponivel === false) return false;
-
     if (produto.disponivel_sempre) return true;
     if (!produto.hora_inicio || !produto.hora_fim) return true;
 
@@ -25,7 +24,6 @@ export const ProductCard = ({ produto, onAdd }: ProductCardProps) => {
     if (fim < inicio) {
         return horaAtual >= inicio || horaAtual <= fim;
     }
-
     return horaAtual >= inicio && horaAtual <= fim;
   };
 
@@ -48,6 +46,13 @@ export const ProductCard = ({ produto, onAdd }: ProductCardProps) => {
           className="h-full w-full rounded-2xl object-cover border border-white/10 shadow-lg" 
           alt={produto.nome} 
         />
+        {/* Badge de Unidade/Peso (Novo) */}
+        {produto.unidade_medida && disponivel && (
+          <div className="absolute -top-1 -right-1 bg-[#ffcc00] text-[#3b013b] px-2 py-0.5 rounded-lg font-black text-[8px] uppercase shadow-lg">
+            {produto.unidade_medida}
+          </div>
+        )}
+        
         {!disponivel && (
            <div className="absolute inset-0 bg-black/70 rounded-2xl flex items-center justify-center backdrop-blur-[2px]">
               <span className="text-[8px] font-black uppercase text-white bg-red-600 px-2 py-1 rounded-lg tracking-tighter">

@@ -14,6 +14,8 @@ interface ComplementoItem {
   tipo: 'sabor' | 'extra'; 
 }
 
+const CATEGORIAS = ['Sorvete', 'Açaí', 'Hambúrgueres', 'Cuscuz'];
+
 export function ComplementosManager() {
   const [itens, setItens] = useState<ComplementoItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -72,7 +74,7 @@ export function ComplementosManager() {
       nome: form.nome,
       preco: parseFloat(form.preco.replace(',', '.')),
       categoria_pai: form.categoria_pai,
-      tipo: form.tipo, // Campo novo para o banco
+      tipo: form.tipo,
       tenant_id: TENANT_ID_MACIEL,
       disponivel: true
     }]);
@@ -100,13 +102,18 @@ export function ComplementosManager() {
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+      
       {/* FORMULÁRIO DE CADASTRO */}
       <div className="lg:col-span-4">
         <form onSubmit={handleAdd} className="bg-white/5 border border-white/10 p-6 rounded-3xl space-y-4 sticky top-8 backdrop-blur-md">
-          <h2 className="text-[#ffcc00] font-black text-xs uppercase italic tracking-[0.2em] mb-4">Novo Item / Sabor</h2>
+          <h2 className="text-[#ffcc00] font-black text-xs uppercase italic tracking-[0.2em] mb-4">
+            Novo Item / Sabor
+          </h2>
           
           <div className="space-y-1">
-            <label className="text-[9px] font-black uppercase text-white/20 ml-2 italic">Nome do Complemento</label>
+            <label className="text-[9px] font-black uppercase text-white/20 ml-2 italic">
+              Nome do Complemento
+            </label>
             <input 
               placeholder="Ex: Chocolate, Morango, Granulado" 
               value={form.nome} 
@@ -116,7 +123,9 @@ export function ComplementosManager() {
           </div>
 
           <div className="space-y-1">
-            <label className="text-[9px] font-black uppercase text-white/20 ml-2 italic">Preço Adicional (R$)</label>
+            <label className="text-[9px] font-black uppercase text-white/20 ml-2 italic">
+              Preço Adicional (R$)
+            </label>
             <input 
               placeholder="0,00" 
               value={form.preco} 
@@ -127,19 +136,26 @@ export function ComplementosManager() {
 
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1">
-              <label className="text-[9px] font-black uppercase text-white/20 ml-2 italic">Categoria</label>
+              <label className="text-[9px] font-black uppercase text-white/20 ml-2 italic">
+                Categoria
+              </label>
               <select 
                 value={form.categoria_pai} 
                 onChange={e => setForm({...form, categoria_pai: e.target.value})}
                 className="w-full p-4 bg-black/40 rounded-2xl border border-white/10 outline-none focus:border-[#ffcc00] text-xs appearance-none text-white font-bold"
               >
-                <option value="Sorvete" className="bg-[#0f010f]">Sorvete</option>
-                <option value="Açaí" className="bg-[#0f010f]">Açaí</option>
+                {CATEGORIAS.map(cat => (
+                  <option key={cat} value={cat} className="bg-[#0f010f]">
+                    {cat}
+                  </option>
+                ))}
               </select>
             </div>
 
             <div className="space-y-1">
-              <label className="text-[9px] font-black uppercase text-white/20 ml-2 italic">Tipo de Item</label>
+              <label className="text-[9px] font-black uppercase text-white/20 ml-2 italic">
+                Tipo de Item
+              </label>
               <select 
                 value={form.tipo} 
                 onChange={e => setForm({...form, tipo: e.target.value as 'sabor' | 'extra'})}
@@ -158,19 +174,20 @@ export function ComplementosManager() {
         </form>
       </div>
 
-      {/* LISTAGEM DE ITENS */}
+      {/* LISTAGEM */}
       <div className="lg:col-span-8 space-y-12">
-        {['Sorvete', 'Açaí'].map(cat => (
+        {CATEGORIAS.map(cat => (
           <div key={cat} className="space-y-6">
             <div className="flex items-center gap-4">
-                <div className="p-2 bg-[#ffcc00]/10 rounded-lg">
-                  <IceCream size={16} className="text-[#ffcc00]" />
-                </div>
-                <h3 className="text-sm font-black uppercase text-white italic tracking-[0.2em]">{cat}</h3>
-                <div className="h-px flex-1 bg-gradient-to-r from-white/10 to-transparent" />
+              <div className="p-2 bg-[#ffcc00]/10 rounded-lg">
+                <IceCream size={16} className="text-[#ffcc00]" />
+              </div>
+              <h3 className="text-sm font-black uppercase text-white italic tracking-[0.2em]">
+                {cat}
+              </h3>
+              <div className="h-px flex-1 bg-gradient-to-r from-white/10 to-transparent" />
             </div>
 
-            {/* Divisão por Subtipos (Sabores e Extras) */}
             {['sabor', 'extra'].map(subTipo => (
               <div key={subTipo} className="space-y-3">
                 <h4 className="text-[9px] font-black uppercase text-white/30 ml-2 tracking-widest">
@@ -179,41 +196,41 @@ export function ComplementosManager() {
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   {loading ? (
-                      <div className="h-20 bg-white/5 animate-pulse rounded-3xl md:col-span-2" />
+                    <div className="h-20 bg-white/5 animate-pulse rounded-3xl md:col-span-2" />
                   ) : (
                     itens.filter(i => i.categoria_pai === cat && i.tipo === subTipo).length === 0 ? (
-                      <p className="text-[10px] text-white/10 italic p-4 border border-dashed border-white/5 rounded-2xl md:col-span-2 text-center">Nenhum item cadastrado nesta subcategoria.</p>
+                      <p className="text-[10px] text-white/10 italic p-4 border border-dashed border-white/5 rounded-2xl md:col-span-2 text-center">
+                        Nenhum item cadastrado nesta subcategoria.
+                      </p>
                     ) : (
-                      itens.filter(i => i.categoria_pai === cat && i.tipo === subTipo).map(item => (
-                        <div key={item.id} className={`flex justify-between items-center bg-white/5 p-4 rounded-[1.5rem] border transition-all ${item.disponivel ? 'border-white/5' : 'border-red-500/20 opacity-60 grayscale'}`}>
-                          <div className="flex items-center gap-4">
-                            <button 
-                              onClick={() => toggleStatus(item.id, item.disponivel)}
-                              className={`w-11 h-11 flex items-center justify-center rounded-2xl transition-all ${item.disponivel ? 'bg-green-500/10 text-green-500 hover:bg-green-500/20' : 'bg-red-500/10 text-red-500 hover:bg-red-500/20'}`}
-                            >
-                              {item.disponivel ? <Power size={18}/> : <PowerOff size={18}/>}
-                            </button>
+                      itens
+                        .filter(i => i.categoria_pai === cat && i.tipo === subTipo)
+                        .map(item => (
+                          <div key={item.id} className={`flex justify-between items-center bg-white/5 p-4 rounded-[1.5rem] border transition-all ${item.disponivel ? 'border-white/5' : 'border-red-500/20 opacity-60 grayscale'}`}>
+                            
+                            <div className="flex items-center gap-4">
+                              <button 
+                                onClick={() => toggleStatus(item.id, item.disponivel)}
+                                className={`w-11 h-11 flex items-center justify-center rounded-2xl transition-all ${item.disponivel ? 'bg-green-500/10 text-green-500' : 'bg-red-500/10 text-red-500'}`}
+                              >
+                                {item.disponivel ? <Power size={18}/> : <PowerOff size={18}/>}
+                              </button>
 
-                            <div>
-                              <p className={`text-sm font-bold uppercase italic tracking-tight ${item.disponivel ? 'text-white' : 'text-white/40 line-through'}`}>
-                                {item.nome}
-                              </p>
-                              <div className="flex items-center gap-2">
-                                <span className={`text-[8px] font-black px-1.5 py-0.5 rounded ${item.tipo === 'sabor' ? 'bg-[#ffcc00]/20 text-[#ffcc00]' : 'bg-purple-500/20 text-purple-400'} uppercase`}>
-                                  {item.tipo}
-                                </span>
-                                <p className="text-[#ffcc00] text-[10px] font-black italic">
-                                    {item.preco === 0 ? 'GRÁTIS' : `+ R$ ${Number(item.preco).toFixed(2)}`}
+                              <div>
+                                <p className="text-sm font-bold uppercase text-white">
+                                  {item.nome}
+                                </p>
+                                <p className="text-[#ffcc00] text-[10px] font-black">
+                                  {item.preco === 0 ? 'GRÁTIS' : `+ R$ ${Number(item.preco).toFixed(2)}`}
                                 </p>
                               </div>
                             </div>
-                          </div>
 
-                          <button onClick={() => excluir(item.id)} className="p-3 text-white/20 hover:text-red-500 transition-all">
-                            <Trash2 size={16}/>
-                          </button>
-                        </div>
-                      ))
+                            <button onClick={() => excluir(item.id)} className="p-3 text-white/20 hover:text-red-500">
+                              <Trash2 size={16}/>
+                            </button>
+                          </div>
+                        ))
                     )
                   )}
                 </div>
@@ -222,6 +239,7 @@ export function ComplementosManager() {
           </div>
         ))}
       </div>
+
     </div>
   );
 }

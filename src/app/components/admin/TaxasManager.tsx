@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react"; // Adicionei useCallback
+import { useEffect, useState, useCallback } from "react"; 
 import { supabase, TENANT_ID_MACIEL } from "@/lib/supabase";
 import { Trash2, Plus } from "lucide-react";
 

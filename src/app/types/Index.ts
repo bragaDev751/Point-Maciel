@@ -1,5 +1,3 @@
-// src/types/index.ts
-
 /* ================= COMPONENTES DO PEDIDO ================= */
 
 export interface ItemPedido {
@@ -30,7 +28,6 @@ export interface Pedido {
   created_at: string;
   tenant_id: string;
   pontos_processados: boolean; 
-  
 }
 
 export interface Produto {
@@ -48,7 +45,8 @@ export interface Produto {
   disponivel_sempre?: boolean;
   unidade_medida?: string;
   disponivel?: boolean;
-
+  qtd_sabores_gratis?: number;
+  qtd_extras_max?: number;
 }
 
 export interface Categoria {
@@ -63,7 +61,7 @@ export interface Complemento {
   id: string;
   nome: string;
   preco: number;
-  categoria_pai: string;
+  categoria_pai: string; 
   tenant_id: string;
   disponivel?: boolean; 
   tipo?: 'sabor' | 'extra'; 
