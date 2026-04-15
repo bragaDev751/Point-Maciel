@@ -62,17 +62,17 @@ export const SelectionModal = ({
 
   const totalSaboresSelecionados = sabores.reduce(
     (acc, s) => acc + (selecoes[s.id] || 0),
-    0
+    0,
   );
 
   const totalExtrasSelecionados = adicionais.reduce(
     (acc, a) => acc + (selecoes[a.id] || 0),
-    0
+    0,
   );
 
   const precoExtras = adicionais.reduce(
     (acc, a) => acc + (selecoes[a.id] || 0) * (a.preco || 0),
-    0
+    0,
   );
 
   if (!produto) return null;
@@ -80,7 +80,7 @@ export const SelectionModal = ({
   const handleUpdateQtd = (
     id: string,
     delta: number,
-    tipo: "sabor" | "extra"
+    tipo: "sabor" | "extra",
   ) => {
     setSelecoes((prev) => {
       const qtdAtual = prev[id] || 0;
@@ -89,11 +89,16 @@ export const SelectionModal = ({
       if (novaQtd < 0) return prev;
 
       if (delta > 0) {
-        if (tipo === "sabor" && totalSaboresSelecionados >= limiteSabores)
-          return prev;
+        const totalAtual = Object.entries(prev).reduce(
+          (acc, [currId, currQtd]) => {
+            const item = complementos.find((c) => c.id === currId);
+            return item?.tipo === tipo ? acc + currQtd : acc;
+          },
+          0,
+        );
 
-        if (tipo === "extra" && totalExtrasSelecionados >= limiteExtras)
-          return prev;
+        if (tipo === "sabor" && totalAtual >= limiteSabores) return prev;
+        if (tipo === "extra" && totalAtual >= limiteExtras) return prev;
       }
 
       if (novaQtd === 0) {
@@ -149,14 +154,14 @@ export const SelectionModal = ({
               <div className="mt-3 mb-6 flex flex-col items-center gap-1">
                 <div className="px-4 py-1 bg-[#ffcc00]/10 border border-[#ffcc00]/20 rounded-full">
                   <span className="text-[#ffcc00] text-[10px] font-black uppercase tracking-widest">
-                    Sabores: {totalSaboresSelecionados}/{limiteSabores} • Extras: {totalExtrasSelecionados}/{limiteExtras}
+                    Sabores: {totalSaboresSelecionados}/{limiteSabores} •
+                    Extras: {totalExtrasSelecionados}/{limiteExtras}
                   </span>
                 </div>
               </div>
             )}
 
             <div className="w-full space-y-6 mb-8 max-h-[350px] overflow-y-auto pr-2 no-scrollbar">
-              
               {/* SABORES */}
               {sabores.length > 0 && (
                 <div className="space-y-3">
@@ -187,7 +192,12 @@ export const SelectionModal = ({
 
                         <button
                           onClick={() => handleUpdateQtd(s.id, 1, "sabor")}
-                          className="w-8 h-8 rounded-lg bg-[#ffcc00] text-[#3b013b] font-bold flex items-center justify-center"
+                          disabled={totalSaboresSelecionados >= limiteSabores}
+                          className={`w-8 h-8 rounded-lg font-bold flex items-center justify-center transition-all ${
+                            totalSaboresSelecionados >= limiteSabores
+                              ? "bg-white/5 text-white/10 cursor-not-allowed"
+                              : "bg-[#ffcc00] text-[#3b013b]"
+                          }`}
                         >
                           +
                         </button>
@@ -234,7 +244,12 @@ export const SelectionModal = ({
 
                         <button
                           onClick={() => handleUpdateQtd(a.id, 1, "extra")}
-                          className="w-8 h-8 rounded-lg bg-[#ffcc00] text-[#3b013b] font-bold flex items-center justify-center"
+                          disabled={totalExtrasSelecionados >= limiteExtras}
+                          className={`w-8 h-8 rounded-lg font-bold flex items-center justify-center transition-all ${
+                            totalExtrasSelecionados >= limiteExtras
+                              ? "bg-white/5 text-white/10 cursor-not-allowed"
+                              : "bg-[#ffcc00] text-[#3b013b]"
+                          }`}
                         >
                           +
                         </button>
