@@ -36,17 +36,18 @@ export const ProductCard = ({ produto, onAdd }: ProductCardProps) => {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, scale: 0.95 }}
-      className={`bg-white/5 border border-white/10 rounded-[2rem] p-3 flex items-center gap-4 group transition-all ${
+      // Troquei gap-4 por gap-3 para ganhar espaço no mobile
+      className={`bg-white/5 border border-white/10 rounded-[2rem] p-3 flex items-center gap-3 group transition-all ${
         !disponivel ? 'opacity-40 grayscale' : 'active:bg-white/10 hover:border-white/20'
       }`}
     >
-      <div className="relative h-24 w-24 flex-shrink-0">
+      {/* IMAGEM: flex-none garante que ela mantenha o tamanho */}
+      <div className="relative h-20 w-20 flex-none"> 
         <img 
           src={imagemFinal} 
           className="h-full w-full rounded-2xl object-cover border border-white/10 shadow-lg" 
           alt={produto.nome} 
         />
-        {/* Badge de Unidade/Peso (Novo) */}
         {produto.unidade_medida && disponivel && (
           <div className="absolute -top-1 -right-1 bg-[#ffcc00] text-[#3b013b] px-2 py-0.5 rounded-lg font-black text-[8px] uppercase shadow-lg">
             {produto.unidade_medida}
@@ -62,44 +63,46 @@ export const ProductCard = ({ produto, onAdd }: ProductCardProps) => {
         )}
       </div>
       
-      <div className="flex-1 min-w-0">
+      {/* TEXTO: flex-1 e min-w-0 são essenciais para o truncate funcionar */}
+      <div className="flex-1 min-w-0 overflow-hidden">
         <div className="flex flex-col">
           <h3 className={`font-black text-sm uppercase italic leading-tight mb-1 truncate ${!disponivel ? 'text-white/40' : 'text-white'}`}>
             {produto.nome}
           </h3>
           
           {!disponivel && produto.disponivel !== false && (
-            <p className="text-[8px] font-black text-yellow-500 uppercase mb-1 tracking-tight">
+            <p className="text-[8px] font-black text-yellow-500 uppercase mb-0.5 tracking-tight">
               Abre às {produto.hora_inicio?.slice(0, 5)}
             </p>
           )}
 
           {produto.disponivel === false && (
-            <p className="text-[8px] font-black text-red-500 uppercase mb-1 tracking-tight">
-              Indisponível no momento
+            <p className="text-[8px] font-black text-red-500 uppercase mb-0.5 tracking-tight">
+              Indisponível
             </p>
           )}
         </div>
         
         {produto.descricao ? (
-          <p className="text-[10px] text-white/40 leading-relaxed line-clamp-2 mb-2 font-medium">
+          <p className="text-[10px] text-white/40 leading-tight line-clamp-2 mb-1 font-medium break-words">
             {produto.descricao}
           </p>
         ) : (
-          <p className="text-[10px] text-white/20 italic mb-2">Sem descrição disponível</p>
+          <p className="text-[10px] text-white/20 italic mb-1">Sem descrição</p>
         )}
 
-        <p className={`font-black italic text-lg leading-none ${!disponivel ? 'text-white/20' : 'text-[#ffcc00]'}`}>
+        <p className={`font-black italic text-base leading-none ${!disponivel ? 'text-white/20' : 'text-[#ffcc00]'}`}>
           R$ {produto.preco.toFixed(2)}
         </p>
       </div>
 
+      {/* BOTÃO: flex-none para ele NUNCA encolher ou sumir */}
       <button 
         onClick={() => disponivel && onAdd(produto)}
         disabled={!disponivel}
-        className={`h-12 w-12 rounded-2xl font-black text-2xl transition-all flex-shrink-0 flex items-center justify-center ${
+        className={`h-11 w-11 rounded-2xl font-black text-xl transition-all flex-none flex items-center justify-center ${
           disponivel 
-          ? "bg-[#ffcc00] text-[#3b013b] shadow-[0_0_15px_rgba(255,204,0,0.2)] active:scale-90" 
+          ? "bg-[#ffcc00] text-[#3b013b] shadow-[0_4px_15px_rgba(255,204,0,0.2)] active:scale-90" 
           : "bg-white/5 text-white/10 cursor-not-allowed"
         }`}
       >
