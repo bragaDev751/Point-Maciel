@@ -31,12 +31,10 @@ export const ProductForm = () => {
   const [categoria, setCategoria] = useState("");
   const [descricao, setDescricao] = useState("");
 
-  // Estados de Horário
   const [horaInicio, setHoraInicio] = useState("00:00");
   const [horaFim, setHoraFim] = useState("23:59");
   const [disponivelSempre, setDisponivelSempre] = useState(true);
 
-  // Unidade de medida
   const [unidadeMedida, setUnidadeMedida] = useState("unid");
 
   const [qtdSabores, setQtdSabores] = useState("0");
@@ -50,9 +48,9 @@ export const ProductForm = () => {
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Carregar categorias
   useEffect(() => {
     const carregarCategorias = async () => {
+      if (!supabase || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) return;
       const { data, error } = await supabase
         .from("categorias")
         .select("id, nome")
@@ -190,7 +188,6 @@ export const ProductForm = () => {
       cancelarEdicao();
       window.dispatchEvent(new Event("refreshProducts"));
     } catch (error: unknown) {
-      // eslint-disable-next-line no-console
       console.dir(error);
       let mensagem = "Erro desconhecido";
       if (error instanceof Error) mensagem = error.message;
@@ -256,9 +253,6 @@ export const ProductForm = () => {
                 Disponível o dia todo
               </span>
             </label>
-            <span className="text-[9px] bg-white/5 px-2 py-1 rounded-full text-white/20 font-bold uppercase">
-              Relógio
-            </span>
           </div>
 
           <AnimatePresence>
@@ -298,8 +292,7 @@ export const ProductForm = () => {
 
         <div className="space-y-2">
           <label className="text-[10px] uppercase font-black text-white/30 ml-2">
-            {" "}
-            Foto do Produto{" "}
+            Foto do Produto
           </label>
           <input
             type="file"
@@ -309,6 +302,7 @@ export const ProductForm = () => {
             className="w-full bg-white/5 border border-white/10 p-4 rounded-2xl text-xs text-white/40 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-black file:bg-[#ffcc00] file:text-[#3b013b]"
           />
         </div>
+
         <div className="grid grid-cols-2 gap-4 bg-white/5 p-6 rounded-[2rem] border border-white/5">
           <div className="space-y-2">
             <label className="text-[10px] uppercase font-black text-[#ffcc00] ml-2">
@@ -319,7 +313,6 @@ export const ProductForm = () => {
               value={qtdSabores}
               onChange={(e) => setQtdSabores(e.target.value)}
               className="w-full bg-black/20 border border-white/10 p-4 rounded-xl text-white font-bold"
-              placeholder="Ex: 3"
             />
           </div>
 
@@ -332,10 +325,10 @@ export const ProductForm = () => {
               value={qtdExtras}
               onChange={(e) => setQtdExtras(e.target.value)}
               className="w-full bg-black/20 border border-white/10 p-4 rounded-xl text-white font-bold"
-              placeholder="Ex: 5"
             />
           </div>
         </div>
+
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="space-y-2">
             <label className="text-[10px] uppercase font-black text-white/30 ml-2">
@@ -390,11 +383,7 @@ export const ProductForm = () => {
             disabled={uploading}
             className="flex-[2] bg-[#ffcc00] text-[#3b013b] p-5 rounded-[1.5rem] font-black uppercase text-xs tracking-widest active:scale-95 transition-all shadow-xl shadow-[#ffcc00]/10 disabled:opacity-50"
           >
-            {uploading
-              ? "Processando..."
-              : editandoId
-                ? "Salvar Alterações"
-                : "Cadastrar no Cardápio"}
+            {uploading ? "Processando..." : editandoId ? "Salvar Alterações" : "Cadastrar no Cardápio"}
           </button>
 
           {editandoId && (

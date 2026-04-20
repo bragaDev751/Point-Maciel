@@ -15,15 +15,15 @@ export const TableManager = () => {
   const [mesas, setMesas] = useState<Mesa[]>([]);
   const [loading, setLoading] = useState(false);
 
-  // Estado para o Modal do QR Code
   const [mesaSelecionada, setMesaSelecionada] = useState<string | null>(null);
 
-  // Busca apenas as mesas do Maciel
   const fetchMesas = useCallback(async () => {
+        if (!supabase || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) return;
+
     const { data, error } = await supabase
       .from("mesas")
       .select("*")
-      .eq("tenant_id", TENANT_ID_MACIEL) // 🔥 Filtro de segurança
+      .eq("tenant_id", TENANT_ID_MACIEL) 
       .order("numero", { ascending: true });
 
     if (!error && data) {
@@ -32,7 +32,6 @@ export const TableManager = () => {
   }, []);
 
   useEffect(() => {
-    // Definimos uma função interna para lidar com a promessa
     const loadData = async () => {
       await fetchMesas();
     };
@@ -48,7 +47,7 @@ export const TableManager = () => {
     const { error } = await supabase.from("mesas").insert([
       {
         numero,
-        tenant_id: TENANT_ID_MACIEL, // ✅ Uso da constante centralizada
+        tenant_id: TENANT_ID_MACIEL, 
       },
     ]);
 
@@ -66,7 +65,6 @@ export const TableManager = () => {
   const deletarMesa = async (id: string) => {
     if (!confirm("Remover esta mesa?")) return;
 
-    // Deleta garantindo que pertence ao tenant atual
     const { error } = await supabase
       .from("mesas")
       .delete()

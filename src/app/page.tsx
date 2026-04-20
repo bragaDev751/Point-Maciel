@@ -97,25 +97,45 @@ function HomeContent() {
   };
 
 const handleAdd = (p: Produto) => {
-  const pCat = p.categoria_nome?.trim().toLowerCase() || "";
-  
-  const temComplementos = complementos.some((c) => {
-    const cPai = c.categoria_pai?.trim().toLowerCase() || "";
-    return pCat.includes(cPai) || cPai.includes(pCat);
+  if (!p) return;
+
+  const format = (t: string) => 
+    (t || "").toLowerCase().trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+
+  const pCat = format(p.categoria_nome);
+  const pNome = format(p.nome);
+
+  const ehLanche = pCat === "artesanais" || 
+                   pCat === "artesanal" ||
+                   pCat === "hamburgueres" || 
+                   pCat === "hamburguer" || 
+                   pCat === "lanches" ||
+                   pCat === "lanche" ||
+                   pNome.includes("burger");
+
+  const ehAcai = pCat === "acai";
+  const ehSorvete = pCat === "sorvete" || pCat === "sorvetes";
+
+  if (ehLanche || ehAcai || ehSorvete) {
+    setProdutoSelecionado(p);
+    return;
+  }
+
+  const temComplementos = complementos?.some(c => {
+    const cPai = format(c.categoria_pai);
+    return pCat === cPai; 
   });
 
-  // Se for gelado (açai/sorvete) ou tiver complementos, abre o modal
-  if (pCat.includes('sorvete') || pCat.includes('açaí') || temComplementos) {
+  if (temComplementos) {
     setProdutoSelecionado(p);
     return;
   }
 
   setCarrinho((prev) => [...prev, p]);
   setAnimarCarrinho(true);
-  toast.success(`${p.nome} adicionado!`, { position: "bottom-center" });
+  toast.success(`${p.nome} adicionado!`);
   setTimeout(() => setAnimarCarrinho(false), 300);
 };
-
   const confirmarAdicaoModal = (p: Produto, qtdTotal: number, extras?: ComplementoSelecao[]) => {
     const precoExtras =
       extras?.reduce((acc, comp) => {

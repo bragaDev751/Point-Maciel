@@ -20,7 +20,6 @@ declare module 'next-pwa' {
         dynamicStartUrlRedirect?: string;
     }
 
-    // Define que withPWA recebe a config e retorna uma função que envolve o NextConfig
     function withPWA(config: PWAConfig): (nextConfig: NextConfig) => NextConfig;
     
     export default withPWA;

@@ -21,35 +21,107 @@ export const SelectionModal = ({
   onConfirm,
 }: SelectionModalProps) => {
   const [selecoes, setSelecoes] = useState<{ [key: string]: number }>({});
+  const emojiCategoria = useMemo(() => {
+    const format = (t: string) =>
+      t
+        ?.toLowerCase()
+        .trim()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "") || "";
 
+    const cat = format(produto?.categoria_nome || "");
+    const nome = format(produto?.nome || "");
+
+    if (
+      cat.includes("artesanai") ||
+      cat.includes("hamb") ||
+      cat.includes("lanche") ||
+      nome.includes("burger") ||
+      nome.includes("artesanai")
+    )
+      return "🍔";
+
+    if (cat.includes("acai")) return "💜";
+    if (cat.includes("sorvete") || cat.includes("gelado")) return "🍦";
+    if (cat.includes("cuscuz")) return "🍲"; // Igualando ao seu administrativo
+    if (cat.includes("bebida") || cat.includes("refri") || cat.includes("suco"))
+      return "🥤";
+    if (cat.includes("batata")) return "🍟";
+
+    return "✨";
+  }, [produto]);
   const isAcaiOrSorvete = useMemo(() => {
-    const cat = produto?.categoria_nome?.trim().toLowerCase() || "";
-    return cat.includes("açaí") || cat.includes("sorvete");
+    const cat = (produto?.categoria_nome || "")
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "");
+    return cat.includes("acai") || cat.includes("sorvete");
+  }, [produto]);
+  const isAcai = useMemo(() => {
+    const cat = (produto?.categoria_nome || "")
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "");
+
+    return cat.includes("acai");
   }, [produto]);
 
-  const limiteSabores = produto?.qtd_sabores_gratis ?? 0;
-  const limiteExtras = produto?.qtd_extras_max ?? 0;
+  const limiteSabores = useMemo(() => {
+    const valorNoBanco = Number(produto?.qtd_sabores_gratis);
+    return valorNoBanco > 0 ? valorNoBanco : 10;
+  }, [produto]);
+
+  const limiteExtras = useMemo(() => {
+    const valorNoBanco = Number(produto?.qtd_extras_max);
+
+    if (valorNoBanco > 0) return valorNoBanco;
+
+    const cat = (produto?.categoria_nome || "").toLowerCase();
+    if (cat.includes("artesanal") || cat.includes("hamburguer")) return 15;
+
+    return 10;
+  }, [produto]);
 
   const { sabores, adicionais } = useMemo(() => {
     if (!produto) return { sabores: [], adicionais: [] };
 
-    const categoriaProduto = produto.categoria_nome?.trim().toLowerCase();
+    const format = (t: string) =>
+      (t || "")
+        .trim()
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "");
+
+    const categoriaProduto = format(produto.categoria_nome || "");
+    const nomeProduto = format(produto.nome || "");
 
     const filtrados = complementos.filter((comp) => {
-      const catPai = comp.categoria_pai?.trim().toLowerCase() || "";
-      const catProd = categoriaProduto || "";
+      const catPai = format(comp.categoria_pai || "");
 
-      const categoriasDeLanches = ["hambúrgueres", "artesanais"];
+      const isLanche =
+        categoriaProduto.includes("hamburguer") ||
+        categoriaProduto.includes("artesanal") ||
+        nomeProduto.includes("burger");
 
-      const pertenceAoGrupoDeLanches =
-        categoriasDeLanches.includes(catProd) &&
-        categoriasDeLanches.includes(catPai);
+      const paiEhLanche =
+        catPai.includes("hamburguer") || catPai.includes("artesanal");
 
-      const eMesmaCategoria =
-        catProd.includes(catPai) || catPai.includes(catProd);
+      if (isLanche && paiEhLanche) {
+        return comp.disponivel === true;
+      }
+
+      const matchAcai =
+        categoriaProduto.includes("acai") && catPai.includes("acai");
+      const matchSorvete =
+        categoriaProduto.includes("sorvete") && catPai.includes("sorvete");
+      const matchCuscuz =
+        categoriaProduto.includes("cuscuz") && catPai.includes("cuscuz");
 
       return (
-        (pertenceAoGrupoDeLanches || eMesmaCategoria) &&
+        (matchAcai ||
+          matchSorvete ||
+          matchCuscuz ||
+          catPai === categoriaProduto) &&
         comp.disponivel === true
       );
     });
@@ -146,7 +218,8 @@ export const SelectionModal = ({
           className="bg-[#1a011a] border border-white/10 w-full max-w-md rounded-t-[3rem] sm:rounded-[3rem] p-8 shadow-2xl my-auto"
         >
           <div className="flex flex-col items-center">
-            <h2 className="text-xl font-black uppercase italic text-white text-center">
+            <h2 className="text-xl font-black uppercase italic text-white text-center flex items-center gap-2">
+              <span className="text-2xl not-italic">{emojiCategoria}</span>
               {produto.nome}
             </h2>
 
@@ -154,10 +227,28 @@ export const SelectionModal = ({
               <div className="mt-3 mb-6 flex flex-col items-center gap-1">
                 <div className="px-4 py-1 bg-[#ffcc00]/10 border border-[#ffcc00]/20 rounded-full">
                   <span className="text-[#ffcc00] text-[10px] font-black uppercase tracking-widest">
-                    Sabores: {totalSaboresSelecionados}/{limiteSabores} •
-                    Extras: {totalExtrasSelecionados}/{limiteExtras}
+                    {sabores.length > 0 && (
+                      <>
+                        SABORES: {totalSaboresSelecionados}/{limiteSabores}
+                      </>
+                    )}
+
+                    {sabores.length > 0 && adicionais.length > 0 && " • "}
+
+                    {adicionais.length > 0 && (
+                      <>
+                        ACOMPANHAMENTOS: {totalExtrasSelecionados}/
+                        {limiteExtras}
+                      </>
+                    )}
                   </span>
                 </div>
+
+                {isAcai && (
+                  <span className="text-[8px] font-bold text-white/40 uppercase tracking-tighter">
+                    * Selecione até {limiteExtras} itens para o seu pote
+                  </span>
+                )}
               </div>
             )}
 

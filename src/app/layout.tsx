@@ -13,6 +13,7 @@ export const viewport: Viewport = {
 
 // 2. Metadados Completos (SEO + Social Media)
 export const metadata: Metadata = {
+  metadataBase: new URL("http://localhost:3000"), 
   title: {
     default: "Point do Maciel | Cardápio Digital",
     template: "%s | Point do Maciel"

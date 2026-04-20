@@ -1,13 +1,15 @@
 "use client";
 import { useState, useEffect } from "react";
 import { supabase, TENANT_ID_MACIEL } from "@/lib/supabase";
-import {
-  Calendar,
-  Target,
-  TrendingUp,
-  BarChart3,
-  Loader2
-} from "lucide-react";
+import { Calendar, Target, TrendingUp, Loader2 } from "lucide-react";
+
+interface ItemPedidoDB {
+  id: string;
+  pedido_id: string;
+  produto_nome?: string;
+  nome?: string;
+  quantidade?: number;
+}
 
 interface DayMetrics {
   faturamentoDia: number;
@@ -19,7 +21,9 @@ interface DayMetrics {
 }
 
 export const Dashboard = () => {
-  const [dataAlvo, setDataAlvo] = useState(new Date().toISOString().split("T")[0]);
+  const [dataAlvo, setDataAlvo] = useState(
+    new Date().toISOString().split("T")[0],
+  );
   const [loading, setLoading] = useState(true);
   const [metrics, setMetrics] = useState<DayMetrics>({
     faturamentoDia: 0,
@@ -32,59 +36,125 @@ export const Dashboard = () => {
 
   useEffect(() => {
     const fetchStats = async () => {
+      if (
+        typeof window === "undefined" ||
+        !supabase ||
+        !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+      ) {
+        return;
+      }
+
       setLoading(true);
       try {
-        const fimDia = `${dataAlvo}T23:59:59`;
-        const configDate = new Date(dataAlvo + "T12:00:00");
-        const inicioMes = new Date(configDate.getFullYear(), configDate.getMonth(), 1).toISOString().split("T")[0] + "T00:00:00";
+        const { data, error } = await supabase
+          .from("pedidos")
+          .select("*")
+          .eq("tenant_id", TENANT_ID_MACIEL)
+          .limit(1);
+        const hoje = dataAlvo;
+
+        const inicioMes = `${dataAlvo.slice(0, 7)}-01T00:00:00.000Z`;
+        const fimDiaCompleto = `${dataAlvo}T23:59:59.999Z`;
+
+        console.log("Consultando de:", inicioMes, "até:", fimDiaCompleto);
+        if (error) {
+          console.log("--- DIAGNÓSTICO SUPABASE ---");
+          console.log("Código do Erro:", error.code);
+          console.log("Mensagem:", error.message);
+          console.log("Detalhes:", error.details);
+          console.log("Dica:", error.hint);
+          console.log("---------------------------");
+        } else {
+          console.log("✅ Conexão com pedidos funcionando!", data);
+        }
 
         const { data: pedidosMes } = await supabase
           .from("pedidos")
-          .select("total_pedido, created_at, id, desconto_fidelidade")
+          .select("total_pedido, created_at, id")
           .eq("tenant_id", TENANT_ID_MACIEL)
           .gte("created_at", inicioMes)
-          .lte("created_at", fimDia);
+          .lte("created_at", fimDiaCompleto);
 
-        const pedidos = (pedidosMes || []);
+        const pedidos = pedidosMes || [];
 
-        if (pedidos.length > 0) {
-          const IDsDosPedidos = pedidos.map((p) => p.id);
-          const { data: itensRaw } = await supabase.from("pedido_itens").select("*").in("pedido_id", IDsDosPedidos);
-
-          const countsDia: Record<string, number> = {};
-          const countsMes: Record<string, number> = {};
-          const pedidosHoje = pedidos.filter((p) => p.created_at.startsWith(dataAlvo));
-          const pedidosHojeIDs = pedidosHoje.map((p) => p.id);
-
-          itensRaw?.forEach((item) => {
-            const nome = item.produto_nome || item.nome || "Produto";
-            countsMes[nome] = (countsMes[nome] || 0) + (item.quantidade || 1);
-            if (pedidosHojeIDs.includes(item.pedido_id)) {
-              countsDia[nome] = (countsDia[nome] || 0) + (item.quantidade || 1);
-            }
-          });
-
-          const sortRanking = (obj: Record<string, number>) =>
-            Object.entries(obj)
-              .map(([nome, qtd]) => ({ nome, qtd }))
-              .sort((a, b) => b.qtd - a.qtd)
-              .slice(0, 5);
-
+        if (!pedidos.length) {
           setMetrics({
-            faturamentoDia: pedidosHoje.reduce((acc, p) => acc + Number(p.total_pedido), 0),
-            faturamentoMes: pedidos.reduce((acc, p) => acc + Number(p.total_pedido), 0),
-            totalPedidosDia: pedidosHoje.length,
-            rankingDia: sortRanking(countsDia),
-            rankingMes: sortRanking(countsMes),
-            totalDescontos: pedidos.reduce((acc, p) => acc + (Number(p.desconto_fidelidade) || 0), 0),
+            faturamentoDia: 0,
+            faturamentoMes: 0,
+            totalPedidosDia: 0,
+            rankingDia: [],
+            rankingMes: [],
+            totalDescontos: 0,
           });
+          return;
         }
+
+        const IDsDosPedidos = pedidos.map((p) => p.id);
+
+        let itensRaw: ItemPedidoDB[] = [];
+
+        if (IDsDosPedidos.length > 0) {
+          const { data, error: erroItens } = await supabase
+            .from("pedido_itens")
+            .select("*")
+            .in("pedido_id", IDsDosPedidos)
+            .returns<ItemPedidoDB[]>();
+
+          if (erroItens) {
+            console.error("Erro ao buscar itens:", erroItens.message);
+            return;
+          }
+
+          itensRaw = data || [];
+        }
+
+        const countsDia: Record<string, number> = {};
+        const countsMes: Record<string, number> = {};
+
+        const pedidosHoje = pedidos.filter((p) =>
+          p.created_at.startsWith(dataAlvo),
+        );
+
+        const pedidosHojeIDs = pedidosHoje.map((p) => p.id);
+
+        itensRaw.forEach((item) => {
+          const nome = item.produto_nome || item.nome || "Produto";
+
+          countsMes[nome] = (countsMes[nome] || 0) + (item.quantidade || 1);
+
+          if (pedidosHojeIDs.includes(item.pedido_id)) {
+            countsDia[nome] = (countsDia[nome] || 0) + (item.quantidade || 1);
+          }
+        });
+
+        const sortRanking = (obj: Record<string, number>) =>
+          Object.entries(obj)
+            .map(([nome, qtd]) => ({ nome, qtd }))
+            .sort((a, b) => b.qtd - a.qtd)
+            .slice(0, 5);
+
+        setMetrics({
+          faturamentoDia: pedidosHoje.reduce(
+            (acc, p) => acc + Number(p.total_pedido || 0),
+            0,
+          ),
+
+          faturamentoMes: pedidos.reduce(
+            (acc, p) => acc + Number(p.total_pedido || 0),
+            0,
+          ),
+          totalPedidosDia: pedidosHoje.length,
+          rankingDia: sortRanking(countsDia),
+          rankingMes: sortRanking(countsMes),
+          totalDescontos: 0,
+        });
       } catch (error) {
         console.error("Erro Dashboard:", error);
       } finally {
         setLoading(false);
       }
     };
+
     fetchStats();
   }, [dataAlvo]);
 
@@ -97,10 +167,15 @@ export const Dashboard = () => {
             <Calendar size={24} />
           </div>
           <div>
-            <h2 className="text-[10px] font-black uppercase tracking-[0.2em] text-white/40">Relatórios de Vendas</h2>
-            <p className="text-sm font-black text-white italic uppercase">Point Maciel</p>
+            <h2 className="text-[10px] font-black uppercase tracking-[0.2em] text-white/40">
+              Relatórios de Vendas
+            </h2>
+            <p className="text-sm font-black text-white italic uppercase">
+              Point Maciel
+            </p>
           </div>
         </div>
+
         <input
           type="date"
           value={dataAlvo}
@@ -112,75 +187,89 @@ export const Dashboard = () => {
       {loading ? (
         <div className="h-96 flex flex-col items-center justify-center text-white/20 gap-4">
           <Loader2 className="animate-spin" size={40} />
-          <p className="text-[10px] font-black uppercase tracking-widest">Processando dados...</p>
+          <p className="text-[10px] font-black uppercase tracking-widest">
+            Processando dados...
+          </p>
         </div>
       ) : (
         <>
-          {/* 💰 CARDS PRINCIPAIS */}
+          {/* 💰 CARDS */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             <div className="bg-white/5 border border-white/10 p-8 rounded-[2.5rem]">
-              <p className="text-[10px] font-black uppercase text-white/40 mb-2">Vendas Hoje</p>
-              <h3 className="text-3xl font-black text-[#ffcc00]">R$ {metrics.faturamentoDia.toFixed(2)}</h3>
+              <p className="text-[10px] font-black uppercase text-white/40 mb-2">
+                Vendas Hoje
+              </p>
+              <h3 className="text-3xl font-black text-[#ffcc00]">
+                R$ {metrics.faturamentoDia.toFixed(2)}
+              </h3>
             </div>
+
             <div className="bg-white/5 border border-white/10 p-8 rounded-[2.5rem]">
-              <p className="text-[10px] font-black uppercase text-white/40 mb-2">Faturamento Mês</p>
-              <h3 className="text-3xl font-black text-white">R$ {metrics.faturamentoMes.toFixed(2)}</h3>
+              <p className="text-[10px] font-black uppercase text-white/40 mb-2">
+                Faturamento Mês
+              </p>
+              <h3 className="text-3xl font-black text-white">
+                R$ {metrics.faturamentoMes.toFixed(2)}
+              </h3>
             </div>
+
             <div className="bg-[#ffcc00] p-8 rounded-[2.5rem]">
-              <p className="text-[10px] font-black uppercase text-black/60 mb-2">Pedidos Hoje</p>
-              <h3 className="text-3xl font-black text-black">{metrics.totalPedidosDia}</h3>
+              <p className="text-[10px] font-black uppercase text-black/60 mb-2">
+                Pedidos Hoje
+              </p>
+              <h3 className="text-3xl font-black text-black">
+                {metrics.totalPedidosDia}
+              </h3>
             </div>
+
             <div className="bg-purple-500/10 border border-purple-500/20 p-8 rounded-[2.5rem]">
-              <p className="text-[10px] font-black uppercase text-purple-400 mb-2">Fidelidade (Mês)</p>
-              <h3 className="text-3xl font-black text-purple-400">R$ {metrics.totalDescontos.toFixed(2)}</h3>
+              <p className="text-[10px] font-black uppercase text-purple-400 mb-2">
+                Fidelidade (Mês)
+              </p>
+              <h3 className="text-3xl font-black text-purple-400">
+                R$ {metrics.totalDescontos.toFixed(2)}
+              </h3>
             </div>
           </div>
 
-          {/* 🏆 SEÇÃO DE RANKINGS */}
+          {/* 🏆 RANKINGS */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            {/* RANKING DIA */}
+            {/* DIA */}
             <div className="bg-white/5 border border-white/10 p-8 rounded-[3rem] backdrop-blur-md">
               <div className="flex items-center gap-3 mb-8">
                 <Target size={20} className="text-[#ffcc00]" />
-                <h3 className="text-xs font-black uppercase italic tracking-widest text-white">Top 5 de Hoje</h3>
+                <h3 className="text-xs font-black uppercase italic tracking-widest text-white">
+                  Top 5 de Hoje
+                </h3>
               </div>
+
               <div className="space-y-6">
                 {metrics.rankingDia.map((item, index) => (
                   <div key={index} className="space-y-2">
-                    <div className="flex justify-between items-end">
-                      <span className="text-[11px] font-bold text-white uppercase truncate pr-4">{index + 1}º {item.nome}</span>
-                      <span className="text-xs font-black text-[#ffcc00] flex-shrink-0">{item.qtd} un</span>
-                    </div>
-                    <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
-                      <div 
-                        className="h-full bg-[#ffcc00] rounded-full transition-all duration-1000" 
-                        style={{ width: `${(item.qtd / metrics.rankingDia[0].qtd) * 100}%` }} 
-                      />
+                    <div className="flex justify-between">
+                      <span>
+                        {index + 1}º {item.nome}
+                      </span>
+                      <span>{item.qtd} un</span>
                     </div>
                   </div>
                 ))}
               </div>
             </div>
 
-            {/* RANKING MÊS */}
+            {/* MÊS */}
             <div className="bg-white/5 border border-white/10 p-8 rounded-[3rem] backdrop-blur-md">
               <div className="flex items-center gap-3 mb-8">
                 <TrendingUp size={20} className="text-purple-400" />
-                <h3 className="text-xs font-black uppercase italic tracking-widest text-white">Campeões do Mês</h3>
+                <h3 className="text-xs font-black uppercase italic tracking-widest text-white">
+                  Campeões do Mês
+                </h3>
               </div>
+
               <div className="space-y-6">
                 {metrics.rankingMes.map((item, index) => (
-                  <div key={index} className="space-y-2">
-                    <div className="flex justify-between items-end">
-                      <span className="text-[11px] font-bold text-white uppercase truncate pr-4">{index + 1}º {item.nome}</span>
-                      <span className="text-xs font-black text-purple-400 flex-shrink-0">{item.qtd} un</span>
-                    </div>
-                    <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
-                      <div 
-                        className="h-full bg-purple-500 rounded-full transition-all duration-1000" 
-                        style={{ width: `${(item.qtd / metrics.rankingMes[0].qtd) * 100}%` }} 
-                      />
-                    </div>
+                  <div key={index}>
+                    {index + 1}º {item.nome} - {item.qtd}
                   </div>
                 ))}
               </div>

@@ -53,17 +53,16 @@ export const CheckoutForm = ({
     { id: string; bairro: string; valor: number }[]
   >([]);
   const [taxaEntrega, setTaxaEntrega] = useState(0);
-  // ===== PIX =====
+  
   const [pedidoFinalizado, setPedidoFinalizado] = useState<{
     id: string;
     msg: string;
   } | null>(null);
 
   const [copiou, setCopiou] = useState(false);
-
   const CHAVE_PIX_MACIEL = "05746347388";
 
-  // ================= ADIÇÃO: ESTADOS DE FIDELIDADE =================
+  // FIDELIDADE
   const [pontosDisponiveis, setPontosDisponiveis] = useState(0);
   const [usarDescontoFidelidade, setUsarDescontoFidelidade] = useState(false);
   const VALOR_DESCONTO = 10;
@@ -78,6 +77,7 @@ export const CheckoutForm = ({
 
   useEffect(() => {
     const buscarPontos = async () => {
+      if (!supabase || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) return;
       const telLimpo = telefone.replace(/\D/g, "");
       if (telLimpo.length >= 10) {
         const { data } = await supabase
@@ -94,7 +94,6 @@ export const CheckoutForm = ({
     };
     buscarPontos();
   }, [telefone]);
-  // ==============================================================
 
   useEffect(() => {
     if (mesaURL) {
@@ -102,8 +101,10 @@ export const CheckoutForm = ({
       setPagamento("Mesa");
     }
   }, [mesaURL, setTipoEntrega]);
+
   useEffect(() => {
     const buscarTaxas = async () => {
+      if (!supabase || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) return;
       const { data } = await supabase
         .from("taxas_entrega")
         .select("*")
@@ -112,7 +113,6 @@ export const CheckoutForm = ({
 
       if (data) setTaxasDisponiveis(data);
     };
-
     buscarTaxas();
   }, []);
 
@@ -122,7 +122,10 @@ export const CheckoutForm = ({
     msg += `*Cliente:* ${nome}%0A`;
     msg += `*Contato:* ${telefone}%0A`;
 
-    if (tipoEntrega === "mesa") msg += `📍 *Mesa:* ${mesaURL}%0A`;
+    if (tipoEntrega === "mesa") {
+      msg += `🍽️ *COMER NO LOCAL*%0A`;
+      msg += `📍 *MESA:* ${mesaURL || "Informar ao atendente"}%0A`;
+    }
     if (tipoEntrega === "delivery") {
       msg += `🛵 *DELIVERY*%0A`;
       msg += `*Bairro:* ${bairro}%0A`;
@@ -146,7 +149,7 @@ export const CheckoutForm = ({
     msg += `*ITENS:*%0A`;
 
     carrinho.forEach((item, index) => {
-      msg += `*${index + 1}. ${item.nome}*%0A`;
+      msg += `*${index + 1}. ${item.nome}* ${item.categoria_nome === 'Artesanais' ? '(Premium)' : ''}%0A`;
       if (item.descricao) {
         msg += `   ➕ ${item.descricao}%0A`;
       }
@@ -154,14 +157,16 @@ export const CheckoutForm = ({
     });
 
     msg += `---------------------------------------%0A`;
-    msg += `**TOTAL FINAL: R$ ${totalFinalComTaxa.toFixed(2)}*`;
+    msg += `*TOTAL FINAL: R$ ${totalFinalComTaxa.toFixed(2)}*%0A`;
     return msg;
   };
+
   const handleCopiarPix = () => {
     navigator.clipboard.writeText(CHAVE_PIX_MACIEL);
     setCopiou(true);
     setTimeout(() => setCopiou(false), 2000);
   };
+
   const handleFinalizar = async () => {
     if (!lojaAberta) return alert("A loja está fechada.");
     if (!nome.trim()) return alert("Digite seu nome.");
@@ -179,7 +184,7 @@ export const CheckoutForm = ({
     } else if (tipoEntrega === "retirada") {
       enderecoCompleto = "RETIRADA NO LOCAL";
     } else {
-      enderecoCompleto = `MESA ${mesaURL}`;
+      enderecoCompleto = `COMER NO LOCAL - MESA ${mesaURL || "S/N"}`;
     }
 
     setIsEnviando(true);
@@ -230,22 +235,19 @@ export const CheckoutForm = ({
           quantidade: 1,
           preco_unitario: item.preco,
         }));
-
         await supabase.from("pedido_itens").insert(itensParaInserir);
       }
+
       const mensagem = formatarWhats();
       const linkWhatsapp = `https://wa.me/5588981277642?text=${mensagem}`;
 
       if (pagamento === "Pix") {
-        setPedidoFinalizado({
-          id: novoPedido.id,
-          msg: mensagem,
-        });
+        setPedidoFinalizado({ id: novoPedido.id, msg: mensagem });
         return;
-      } else {
-        onConfirm();
-        window.location.href = linkWhatsapp;
       }
+
+      window.open(linkWhatsapp, "_blank");
+      setTimeout(() => onConfirm(), 600);
     } catch (err) {
       console.error(err);
       alert("Erro ao enviar pedido.");
@@ -253,6 +255,7 @@ export const CheckoutForm = ({
       setIsEnviando(false);
     }
   };
+
   if (pedidoFinalizado) {
     return (
       <motion.div
@@ -261,19 +264,22 @@ export const CheckoutForm = ({
         className="p-4 max-w-md mx-auto text-center space-y-6 pt-10"
       >
         <div className="bg-[#1a011a] p-8 rounded-[3rem] border border-yellow-400/20 space-y-6">
-          <h2 className="text-2xl font-black uppercase">Pagamento via Pix</h2>
+          <h2 className="text-2xl font-black uppercase text-white">Pagamento via Pix</h2>
+          <div className="bg-white p-4 rounded-3xl w-48 h-48 mx-auto flex items-center justify-center">
+             <img src="/qrcode-pix.png" className="w-full h-full object-contain" alt="QR Code Pix" />
+          </div>
 
-          <img src="/qrcode-pix.png" className="w-48 h-48 mx-auto" />
-
-          <div className="bg-white/5 p-4 rounded-xl flex justify-between items-center">
-            <span className="text-xs">{CHAVE_PIX_MACIEL}</span>
-
-            <button onClick={handleCopiarPix}>
+          <div className="bg-white/5 p-4 rounded-xl flex justify-between items-center border border-white/10">
+            <span className="text-[10px] text-white/50 font-mono truncate mr-2">{CHAVE_PIX_MACIEL}</span>
+            <button 
+              onClick={handleCopiarPix}
+              className="bg-yellow-400 text-black px-3 py-1 rounded-lg text-[10px] font-black uppercase"
+            >
               {copiou ? "Copiado!" : "Copiar"}
             </button>
           </div>
 
-          <div className="text-xl font-bold text-yellow-400">
+          <div className="text-3xl font-black text-yellow-400 italic">
             R$ {totalFinalComTaxa.toFixed(2)}
           </div>
 
@@ -282,14 +288,15 @@ export const CheckoutForm = ({
               onConfirm();
               window.location.href = `https://wa.me/5588981277642?text=${pedidoFinalizado.msg}`;
             }}
-            className="w-full bg-green-500 text-white p-4 rounded-xl"
+            className="w-full bg-green-500 text-white p-5 rounded-2xl font-black uppercase tracking-widest hover:bg-green-600 transition-all"
           >
-            Já paguei
+            Já paguei / Enviar Whats
           </button>
         </div>
       </motion.div>
     );
   }
+
   return (
     <motion.section
       initial={{ opacity: 0, y: 15 }}
@@ -298,12 +305,12 @@ export const CheckoutForm = ({
     >
       <div className="space-y-3 mb-6">
         <div className="flex justify-between items-center px-2">
-          <h3 className="text-[10px] font-black uppercase text-white/20">
+          <h3 className="text-[10px] font-black uppercase text-white/20 tracking-widest">
             Seu Carrinho
           </h3>
           <button
             onClick={onBack}
-            className="text-[10px] font-black uppercase text-yellow-400"
+            className="text-[10px] font-black uppercase text-yellow-400 border-b border-yellow-400/20"
           >
             + Adicionar mais
           </button>
@@ -314,38 +321,45 @@ export const CheckoutForm = ({
             <motion.div
               key={`${item.id}-${index}`}
               layout
-              className="bg-white/5 p-5 rounded-[2rem] border border-white/5 space-y-3"
+              className="bg-white/5 p-5 rounded-[2.5rem] border border-white/5 space-y-3"
             >
               <div className="flex justify-between items-start">
                 <div className="flex gap-4">
-                  <div className="w-12 h-12 rounded-xl overflow-hidden bg-black/40 border border-white/10">
+                  <div className="w-14 h-14 rounded-2xl overflow-hidden bg-black/40 border border-white/10 flex-shrink-0">
                     <img
-                      src={item.imagem_url || item.image}
+                      src={item.imagem_url || item.image || 'https://via.placeholder.com/150'}
                       className="w-full h-full object-cover"
                       alt={item.nome}
                     />
                   </div>
-                  <div>
-                    <p className="font-black text-sm uppercase italic">
-                      {item.nome}
-                    </p>
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2 mb-1">
+                      <p className="font-black text-sm uppercase italic text-white truncate">
+                        {item.nome}
+                      </p>
+                      {item.categoria_nome === "Artesanais" && (
+                        <span className="bg-yellow-400 text-black text-[7px] font-black px-1.5 py-0.5 rounded-full uppercase">
+                          Premium
+                        </span>
+                      )}
+                    </div>
                     {item.descricao && (
-                      <p className="text-[10px] text-yellow-400 font-bold leading-tight max-w-[200px]">
-                        + {item.descricao}
+                      <p className="text-[10px] text-yellow-400/80 font-bold leading-tight">
+                        {item.descricao}
                       </p>
                     )}
                   </div>
                 </div>
                 <button
                   onClick={() => onRemove(index)}
-                  className="bg-red-500/10 text-red-500 p-2 rounded-xl text-xs font-bold"
+                  className="bg-red-500/10 text-red-500 p-2 rounded-xl text-[9px] font-black uppercase"
                 >
                   Remover
                 </button>
               </div>
               <div className="flex justify-between items-center pt-2 border-t border-white/5">
-                <span className="text-[10px] font-black text-white/20 uppercase tracking-widest">
-                  Valor do Item
+                <span className="text-[9px] font-black text-white/20 uppercase tracking-widest">
+                  Subtotal
                 </span>
                 <span className="text-yellow-400 font-black italic">
                   R$ {item.preco.toFixed(2)}
@@ -356,71 +370,64 @@ export const CheckoutForm = ({
         </AnimatePresence>
       </div>
 
-      <div className="bg-[#1a011a] p-6 rounded-[2.5rem] border border-white/5 space-y-6 shadow-2xl">
-        <h2 className="text-xl font-black italic uppercase tracking-tighter">
+      <div className="bg-[#1a011a] p-6 rounded-[2.5rem] border border-white/10 space-y-6 shadow-2xl">
+        <h2 className="text-xl font-black italic uppercase tracking-tighter text-white">
           Finalizar Pedido
         </h2>
 
         {!mesaURL && (
-          <div className="grid grid-cols-2 gap-2 p-1 bg-white/5 rounded-2xl border border-white/5">
+          <div className="grid grid-cols-3 gap-2 p-1.5 bg-black/40 rounded-2xl border border-white/5">
             <button
               onClick={() => setTipoEntrega("delivery")}
-              className={`py-3 rounded-xl font-black text-[10px] uppercase transition-all ${tipoEntrega === "delivery" ? "bg-yellow-400 text-black" : "text-white/40"}`}
+              className={`py-3 rounded-xl font-black text-[10px] uppercase transition-all ${
+                tipoEntrega === "delivery" ? "bg-yellow-400 text-black shadow-lg" : "text-white/40"
+              }`}
             >
               🛵 Delivery
             </button>
             <button
-              onClick={() => setTipoEntrega("retirada")}
-              className={`py-3 rounded-xl font-black text-[10px] uppercase transition-all ${tipoEntrega === "retirada" ? "bg-yellow-400 text-black" : "text-white/40"}`}
+              onClick={() => { setTipoEntrega("retirada"); setPagamento("Dinheiro"); }}
+              className={`py-3 rounded-xl font-black text-[10px] uppercase transition-all ${
+                tipoEntrega === "retirada" ? "bg-yellow-400 text-black shadow-lg" : "text-white/40"
+              }`}
             >
               🥡 Retirada
+            </button>
+            <button
+              onClick={() => { setTipoEntrega("mesa"); setPagamento("Mesa"); }}
+              className={`py-3 rounded-xl font-black text-[10px] uppercase transition-all ${
+                tipoEntrega === "mesa" ? "bg-yellow-400 text-black shadow-lg" : "text-white/40"
+              }`}
+            >
+              🍽️ Local
             </button>
           </div>
         )}
 
         <div className="space-y-4">
-          <Input
-            label="Seu Nome"
-            value={nome}
-            onChange={setNome}
-            placeholder="Como te chamamos?"
-          />
-          <Input
-            label="WhatsApp"
-            value={telefone}
-            onChange={(val) => setTelefone(val.replace(/\D/g, ""))}
-            placeholder="(00) 00000-0000"
-          />
+          <Input label="Seu Nome" value={nome} onChange={setNome} placeholder="Como te chamamos?" />
+          <Input label="WhatsApp (para aviso)" value={telefone} onChange={(val) => setTelefone(val.replace(/\D/g, ""))} placeholder="(00) 00000-0000" />
 
-          {/* ADIÇÃO: CARD DE RESGATE FIDELIDADE */}
           <AnimatePresence>
             {pontosDisponiveis >= PONTOS_NECESSARIOS && (
               <motion.div
                 initial={{ scale: 0.9, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
-                className={`p-4 rounded-2xl border-2 border-dashed flex items-center justify-between transition-all ${usarDescontoFidelidade ? "border-green-500 bg-green-500/10" : "border-[#ffcc00]/30 bg-white/5"}`}
+                className={`p-4 rounded-2xl border-2 border-dashed flex items-center justify-between transition-all ${usarDescontoFidelidade ? "border-green-500 bg-green-500/10" : "border-yellow-400/30 bg-white/5"}`}
               >
                 <div className="flex items-center gap-3">
-                  <div
-                    className={`p-2 rounded-lg ${usarDescontoFidelidade ? "bg-green-500 text-white" : "bg-[#ffcc00] text-black"}`}
-                  >
+                  <div className={`p-2 rounded-lg ${usarDescontoFidelidade ? "bg-green-500 text-white" : "bg-yellow-400 text-black"}`}>
                     <Gift size={20} />
                   </div>
                   <div>
-                    <p className="text-[10px] font-black uppercase text-white">
-                      Você tem {pontosDisponiveis} pontos!
-                    </p>
-                    <p className="text-[9px] font-bold text-white/40 uppercase">
-                      Liberado R$ 10,00 de desconto
-                    </p>
+                    <p className="text-[10px] font-black uppercase text-white">Você tem {pontosDisponiveis} pontos!</p>
+                    <p className="text-[9px] font-bold text-white/40 uppercase">Liberado R$ 10,00 de desconto</p>
                   </div>
                 </div>
                 <button
                   type="button"
-                  onClick={() =>
-                    setUsarDescontoFidelidade(!usarDescontoFidelidade)
-                  }
-                  className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase transition-all ${usarDescontoFidelidade ? "bg-green-500 text-white" : "bg-[#ffcc00] text-black"}`}
+                  onClick={() => setUsarDescontoFidelidade(!usarDescontoFidelidade)}
+                  className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase transition-all ${usarDescontoFidelidade ? "bg-green-500 text-white" : "bg-yellow-400 text-black"}`}
                 >
                   {usarDescontoFidelidade ? "Aplicado" : "Resgatar"}
                 </button>
@@ -429,146 +436,87 @@ export const CheckoutForm = ({
           </AnimatePresence>
 
           {tipoEntrega === "delivery" && (
-            <div className="space-y-4 pt-2 border-t border-white/5">
-              <Input
-                label="Rua"
-                value={endereco}
-                onChange={setEndereco}
-                placeholder="Rua exemplo"
-              />
+            <div className="space-y-4 pt-4 border-t border-white/5">
+              <Input label="Rua e Número" value={endereco} onChange={setEndereco} placeholder="Ex: Rua das Flores, 123" />
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1">
-                  <label className="text-[9px] font-black uppercase text-white/30 ml-4 tracking-widest">
-                    Bairro
-                  </label>
+                  <label className="text-[9px] font-black uppercase text-white/30 ml-4 tracking-widest">Bairro</label>
                   <select
                     value={bairro}
                     onChange={(e) => {
-                      const sel = taxasDisponiveis.find(
-                        (t) => t.bairro === e.target.value,
-                      );
+                      const sel = taxasDisponiveis.find((t) => t.bairro === e.target.value);
                       setBairro(e.target.value);
                       setTaxaEntrega(sel ? sel.valor : 0);
                     }}
-                    className="w-full bg-white/5 border border-white/10 p-4 rounded-2xl text-white text-sm font-bold outline-none focus:border-yellow-400"
+                    className="w-full bg-white/5 border border-white/10 p-4 rounded-2xl text-white text-sm font-bold outline-none focus:border-yellow-400 appearance-none"
                   >
-                    <option value="">Selecione seu bairro...</option>
+                    <option value="" className="bg-[#1a011a]">Selecione seu bairro...</option>
                     {taxasDisponiveis.map((t) => (
-                      <option key={t.id} value={t.bairro} className="bg-black">
+                      <option key={t.id} value={t.bairro} className="bg-[#1a011a]">
                         {t.bairro} - R$ {t.valor.toFixed(2)}
                       </option>
                     ))}
                   </select>
                 </div>
-                <Input
-                  label="Número"
-                  value={numero}
-                  onChange={setNumero}
-                  placeholder="Nº"
-                />
+                <Input label="Nº/Apto" value={numero} onChange={setNumero} placeholder="Nº" />
               </div>
-              <Input
-                label="Ponto de Referência"
-                value={referencia}
-                onChange={setReferencia}
-                placeholder="Próximo a..."
-              />
+              <Input label="Ponto de Referência" value={referencia} onChange={setReferencia} placeholder="Próximo a..." />
             </div>
           )}
         </div>
 
         <div className="pt-4 border-t border-white/5 space-y-4">
-          <h3 className="text-[10px] font-black uppercase text-white/30 ml-4 tracking-widest">
-            Forma de Pagamento
-          </h3>
+          <h3 className="text-[10px] font-black uppercase text-white/30 ml-4 tracking-widest">Forma de Pagamento</h3>
           <div className="grid grid-cols-1 gap-2">
             {[
-              { id: "Pix", label: "PIX", icon: <QrCode size={16} /> },
-              {
-                id: "Cartão (Entregador)",
-                label: "Cartão (na entrega)",
-                icon: <CreditCard size={16} />,
-              },
-              {
-                id: "Dinheiro",
-                label: "Dinheiro",
-                icon: <Banknote size={16} />,
-              },
+              { id: "Pix", label: "PIX (Copia e Cola)", icon: <QrCode size={16} /> },
+              { id: "Cartão (Entregador)", label: "Cartão na Entrega", icon: <CreditCard size={16} /> },
+              { id: "Dinheiro", label: "Dinheiro", icon: <Banknote size={16} /> },
+              ...(tipoEntrega === "mesa" ? [{ id: "Mesa", label: "Pagar na Mesa", icon: <Smartphone size={16} /> }] : []),
             ].map((met) => (
               <button
                 key={met.id}
                 onClick={() => setPagamento(met.id as PagamentoMetodo)}
-                className={`flex items-center justify-between p-4 rounded-2xl border transition-all ${pagamento === met.id ? "border-yellow-400 bg-yellow-400/10 text-yellow-400" : "border-white/5 bg-white/5 text-white/40"}`}
+                className={`flex items-center justify-between p-4 rounded-2xl border transition-all ${pagamento === met.id ? "border-yellow-400 bg-yellow-400/10 text-yellow-400 shadow-[0_0_15px_rgba(255,204,0,0.1)]" : "border-white/5 bg-white/5 text-white/40"}`}
               >
                 <div className="flex items-center gap-3">
                   {met.icon}
-                  <span className="text-xs font-black uppercase">
-                    {met.label}
-                  </span>
+                  <span className="text-[10px] font-black uppercase">{met.label}</span>
                 </div>
-                {pagamento === met.id && (
-                  <div className="w-2 h-2 rounded-full bg-yellow-400 shadow-[0_0_10px_#ffcc00]" />
-                )}
+                {pagamento === met.id && <div className="w-2 h-2 rounded-full bg-yellow-400 shadow-[0_0_10px_#ffcc00]" />}
               </button>
             ))}
           </div>
           <AnimatePresence>
             {pagamento === "Dinheiro" && (
-              <motion.div
-                initial={{ height: 0, opacity: 0 }}
-                animate={{ height: "auto", opacity: 1 }}
-                exit={{ height: 0, opacity: 0 }}
-              >
-                <Input
-                  label="Troco para quanto?"
-                  value={trocoPara}
-                  onChange={setTrocoPara}
-                  placeholder="Ex: 50"
-                />
+              <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }}>
+                <Input label="Troco para quanto?" value={trocoPara} onChange={setTrocoPara} placeholder="Ex: 50" />
               </motion.div>
             )}
           </AnimatePresence>
         </div>
 
-        <div className="pt-4 border-t border-white/5">
+        <div className="pt-4 border-t border-white/10">
           {tipoEntrega === "delivery" && taxaEntrega > 0 && (
-            <div className="flex justify-between px-2 mb-1">
-              <span className="text-[10px] text-white/40 uppercase">
-                Taxa de Entrega
-              </span>
-              <span className="text-xs text-white font-bold">
-                R$ {taxaEntrega.toFixed(2)}
-              </span>
+            <div className="flex justify-between px-2 mb-2">
+              <span className="text-[10px] text-white/40 uppercase font-bold">Taxa de Entrega</span>
+              <span className="text-xs text-white font-black">R$ {taxaEntrega.toFixed(2)}</span>
             </div>
           )}
-          <div className="flex justify-between items-end mb-4 px-2">
-            <span className="text-[10px] font-black uppercase text-white/30">
-              Total do Pedido
-            </span>
+          <div className="flex justify-between items-end mb-6 px-2">
+            <span className="text-[10px] font-black uppercase text-white/30 tracking-tighter">Total do Pedido</span>
             <div className="flex flex-col items-end">
-              {usarDescontoFidelidade && (
-                <span className="text-xs text-red-500 line-through font-bold opacity-50">
-                  R$ {total.toFixed(2)}
-                </span>
-              )}
-              <div className="text-3xl font-black text-yellow-400 italic">
-                R$ {totalFinalComTaxa.toFixed(2)}{" "}
-              </div>
+              {usarDescontoFidelidade && <span className="text-xs text-red-500 line-through font-bold opacity-50">R$ {total.toFixed(2)}</span>}
+              <div className="text-4xl font-black text-yellow-400 italic leading-none">R$ {totalFinalComTaxa.toFixed(2)}</div>
             </div>
           </div>
 
           <button
             onClick={handleFinalizar}
             disabled={isEnviando || carrinho.length === 0}
-            className="w-full bg-[#25D366] text-white h-16 rounded-[1.5rem] font-black uppercase tracking-widest transition-all flex items-center justify-center gap-3 disabled:opacity-50 hover:brightness-110 active:scale-95"
+            className="w-full bg-[#25D366] text-white h-18 py-5 rounded-[2rem] font-black uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-3 disabled:opacity-30 hover:brightness-110 active:scale-95 shadow-xl shadow-green-500/10"
           >
-            {isEnviando ? (
-              "Processando..."
-            ) : (
-              <>
-                <Smartphone size={20} /> Confirmar e Enviar
-              </>
-            )}
+            {isEnviando ? "Enviando..." : <><Smartphone size={22} /> Enviar Pedido</>}
           </button>
         </div>
       </div>
@@ -576,21 +524,9 @@ export const CheckoutForm = ({
   );
 };
 
-const Input = ({
-  label,
-  value,
-  onChange,
-  placeholder,
-}: {
-  label: string;
-  value: string;
-  onChange: (v: string) => void;
-  placeholder?: string;
-}) => (
+const Input = ({ label, value, onChange, placeholder }: { label: string; value: string; onChange: (v: string) => void; placeholder?: string; }) => (
   <div className="space-y-1">
-    <label className="text-[9px] font-black uppercase text-white/30 ml-4 tracking-widest">
-      {label}
-    </label>
+    <label className="text-[9px] font-black uppercase text-white/30 ml-4 tracking-widest">{label}</label>
     <input
       value={value || ""}
       onChange={(e) => onChange(e.target.value)}

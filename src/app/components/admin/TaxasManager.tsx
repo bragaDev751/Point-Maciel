@@ -16,6 +16,8 @@ export function TaxasManager() {
   const [novoValor, setNovoValor] = useState("");
 
   const carregarTaxas = useCallback(async () => {
+    if (!supabase || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) 
+      return;
     const { data } = await supabase
       .from("taxas_entrega")
       .select("*")

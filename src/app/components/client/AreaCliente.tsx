@@ -43,12 +43,13 @@ export function AreaCliente() {
   const [buscaRealizada, setBuscaRealizada] = useState(false);
 
   const buscarDados = async () => {
+    if (!supabase || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) 
+      return;
     const telLimpo = telefone.replace(/\D/g, "");
     if (telLimpo.length < 10) return;
     setLoading(true);
 
     try {
-      // 1. Busca dados de fidelidade
       const { data: fidelidade } = await supabase
         .from("fidelidade")
         .select("*")
@@ -56,7 +57,6 @@ export function AreaCliente() {
         .eq("cliente_telefone", telLimpo)
         .maybeSingle();
 
-      // 2. Busca histórico de pedidos
       const { data: pedidos } = await supabase
         .from("pedidos")
         .select("*")
@@ -64,7 +64,6 @@ export function AreaCliente() {
         .eq("cliente_telefone", telLimpo)
         .order("created_at", { ascending: false });
 
-      // 3. Busca extrato de pontos (Tabela que criamos no SQL)
       const { data: historico } = await supabase
         .from("historico_pontos")
         .select("*")

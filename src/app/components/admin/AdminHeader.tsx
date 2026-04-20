@@ -9,8 +9,10 @@ interface AdminHeaderProps {
 
 export const AdminHeader = ({ userEmail }: AdminHeaderProps) => {
   const router = useRouter();
+  
 
   const handleLogout = async () => {
+    if (!supabase || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) return;
     const loadingId = toast.loading("Encerrando sessão...");
     await supabase.auth.signOut();
     toast.success("Até logo!", { id: loadingId });

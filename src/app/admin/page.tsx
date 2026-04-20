@@ -32,6 +32,8 @@ function ControleLoja() {
 
   useEffect(() => {
     const buscarStatus = async () => {
+      if (!supabase || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) 
+        return;
       const { data } = await supabase
         .from('config_loja')
         .select('esta_aberta')
@@ -115,7 +117,8 @@ export default function AdminPage() {
 
   // 3. Categorias
   const carregarCategorias = useCallback(async () => {
-    if (authLoading) return;
+    
+    if (authLoading || !supabase || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) return;
     try {
       const { data, error } = await supabase
         .from('categorias')

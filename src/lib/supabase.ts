@@ -1,16 +1,26 @@
-import { createBrowserClient } from '@supabase/ssr'
+"use client";
+
+import { createBrowserClient } from '@supabase/ssr';
+import { SupabaseClient } from '@supabase/supabase-js';
+import { Produto } from "@/app/types/Index";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
 
-export const supabase = createBrowserClient(supabaseUrl, supabaseAnonKey);
+export const supabase: SupabaseClient =
+  supabaseUrl && supabaseAnonKey
+    ? createBrowserClient(supabaseUrl, supabaseAnonKey)
+    : ({} as SupabaseClient);
+
+if (!supabaseUrl || !supabaseAnonKey) {
+  console.warn("🚨 Atenção: Variáveis de ambiente do Supabase não detectadas.");
+}
 
 export const TENANT_ID_MACIEL = "656f416f-3cf7-4c2e-97b4-53e1d13bc00d";
 
-import { Produto } from "@/app/types/Index";
-
 export const isProductAvailable = (p: Produto): boolean => {
   if (p.disponivel_sempre) return true;
+
   if (!p.hora_inicio || !p.hora_fim) return true;
 
   const agora = new Date();
@@ -22,5 +32,6 @@ export const isProductAvailable = (p: Produto): boolean => {
   if (fim < inicio) {
     return horaAtual >= inicio || horaAtual <= fim;
   }
+
   return horaAtual >= inicio && horaAtual <= fim;
 };

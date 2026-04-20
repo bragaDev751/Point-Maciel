@@ -31,12 +31,11 @@ export default function LoginPage() {
       if (data?.user) {
         toast.success("Bem-vindo, Maciel!");
         
-        // --- AS DUAS LINHAS MÁGICAS PARA O NEXT.JS 15 ---
-        router.refresh(); // Limpa o cache de rotas do servidor
+        router.refresh(); 
         
         setTimeout(() => {
           router.push('/admin'); 
-        }, 800); // Dá tempo do navegador salvar o cookie da sessão
+        }, 800); 
       }
     } catch (err) {
       toast.error("Ocorreu um erro inesperado");
