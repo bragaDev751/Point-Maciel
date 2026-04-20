@@ -177,88 +177,84 @@ export const ProductList = () => {
         </div>
       </div>
 
-      {/* LISTAGEM DOS PRODUTOS */}
-      <div className="grid gap-3">
-        {produtosFiltrados.length === 0 ? (
-          <div className="p-10 border border-dashed border-white/10 rounded-[2rem] text-center text-white/20 text-sm italic">
-            Nenhum item encontrado.
-          </div>
-        ) : (
-          produtosFiltrados.map((p) => (
-  <div
-    key={p.id}
-    className={`flex justify-between items-center p-4 rounded-[2.5rem] border transition-all group ${
-      p.disponivel
-        ? "bg-white/5 border-white/5 hover:border-white/10"
-        : "bg-red-500/5 border-red-500/10 grayscale opacity-60"
-    }`}
-  >
-    {/* ESQUERDA */}
-    <div className="flex items-center gap-3 min-w-0 flex-1">
-      <button
-        onClick={() => toggleStatus(p.id, p.disponivel ?? true)}
-        className={`w-10 h-10 flex items-center justify-center rounded-xl flex-none ${
+      {/* LISTAGEM DOS PRODUTOS COM BLINDAGEM */}
+<div className="grid gap-3">
+  {produtosFiltrados.length === 0 ? (
+    <div className="p-10 border border-dashed border-white/10 rounded-[2rem] text-center text-white/20 text-sm italic">
+      Nenhum item encontrado.
+    </div>
+  ) : (
+    produtosFiltrados.map((p) => (
+      <div
+        key={p.id}
+        className={`flex justify-between items-center p-3 md:p-4 rounded-[2.2rem] border transition-all group w-full overflow-hidden ${
           p.disponivel
-            ? "bg-green-500/10 text-green-500"
-            : "bg-red-500/20 text-red-500"
+            ? "bg-white/5 border-white/5 hover:border-white/10"
+            : "bg-red-500/5 border-red-500/10 grayscale opacity-60"
         }`}
       >
-        {p.disponivel ? <Power size={18} /> : <PowerOff size={18} />}
-      </button>
+        {/* ESQUERDA: Agrupador de Imagem e Info */}
+        <div className="flex items-center gap-3 min-w-0 flex-1">
+          {/* Status Power - Fixo */}
+          <button
+            onClick={() => toggleStatus(p.id, p.disponivel ?? true)}
+            className={`w-9 h-9 md:w-10 md:h-10 flex items-center justify-center rounded-xl flex-none transition-colors ${
+              p.disponivel
+                ? "bg-green-500/10 text-green-500"
+                : "bg-red-500/20 text-red-500"
+            }`}
+          >
+            {p.disponivel ? <Power size={16} /> : <PowerOff size={16} />}
+          </button>
 
-      <div className="w-14 h-14 rounded-xl overflow-hidden border border-white/10 flex-none bg-black/40">
-        <img
-          src={p.imagem_url || p.image || "https://via.placeholder.com/150"}
-          className="w-full h-full object-cover"
-          alt={p.nome}
-          onError={(e) => {
-            (e.target as HTMLImageElement).src =
-              "https://via.placeholder.com/150";
-          }}
-        />
+          {/* Imagem - Fixa */}
+          <div className="w-12 h-12 md:w-14 md:h-14 rounded-xl overflow-hidden border border-white/10 flex-none bg-black/40">
+            <img
+              src={p.imagem_url || p.image || "https://via.placeholder.com/150"}
+              className="w-full h-full object-cover"
+              alt={p.nome}
+              onError={(e) => {
+                (e.target as HTMLImageElement).src = "https://via.placeholder.com/150";
+              }}
+            />
+          </div>
+
+          {/* Textos - Flexível com Truncate */}
+          <div className="min-w-0 flex-1">
+            <span className="text-[7px] md:text-[8px] text-[#ffcc00] font-bold uppercase tracking-wider block truncate">
+              {p.categoria_nome}
+            </span>
+            <p className={`font-bold text-xs md:text-sm leading-tight truncate ${p.disponivel ? "text-white" : "text-white/30"}`}>
+              {p.nome}
+            </p>
+            <p className="text-[#ffcc00] font-black italic text-[11px] md:text-sm">
+              R$ {p.preco.toFixed(2)}
+            </p>
+          </div>
+        </div>
+
+        {/* DIREITA: Botões de Ação - BLINDADOS (flex-none) */}
+        <div className="flex gap-1.5 ml-2 flex-none">
+          <button
+            onClick={() => window.dispatchEvent(new CustomEvent("editProduct", { detail: p }))}
+            className="h-9 w-9 md:h-10 md:w-10 bg-white/10 text-white border border-white/10 rounded-xl flex items-center justify-center hover:bg-[#ffcc00] hover:text-[#3b013b] transition-all active:scale-90"
+            title="Editar Produto"
+          >
+            <Edit3 size={15} />
+          </button>
+
+          <button
+            onClick={() => deletar(p.id, p.imagem_url || p.image)}
+            className="h-9 w-9 md:h-10 md:w-10 bg-red-500/20 text-red-400 border border-red-500/20 rounded-xl flex items-center justify-center hover:bg-red-600 hover:text-white transition-all active:scale-90"
+            title="Excluir Produto"
+          >
+            <Trash2 size={15} />
+          </button>
+        </div>
       </div>
-
-      <div className="min-w-0 flex-1">
-        <span className="text-[8px] text-[#ffcc00] font-bold uppercase tracking-wider block">
-          {p.categoria_nome}
-        </span>
-
-        <p
-          className={`font-bold text-sm leading-tight truncate ${
-            p.disponivel ? "text-white" : "text-white/30"
-          }`}
-        >
-          {p.nome}
-        </p>
-
-        <p className="text-[#ffcc00] font-black italic text-sm">
-          R$ {p.preco.toFixed(2)}
-        </p>
-      </div>
-    </div>
-
-    {/* DIREITA */}
-    <div className="flex gap-1.5 ml-2 flex-none">
-      <button
-        onClick={() =>
-          window.dispatchEvent(new CustomEvent("editProduct", { detail: p }))
-        }
-        className="h-10 w-10 bg-white/5 text-white/50 border border-white/10 rounded-xl flex items-center justify-center hover:bg-[#ffcc00] hover:text-[#3b013b]"
-      >
-        <Edit3 size={16} />
-      </button>
-
-      <button
-        onClick={() => deletar(p.id, p.imagem_url || p.image)}
-        className="h-10 w-10 bg-red-500/10 text-red-500/50 border border-red-500/10 rounded-xl flex items-center justify-center hover:bg-red-500 hover:text-white"
-      >
-        <Trash2 size={16} />
-      </button>
-    </div>
-  </div>
-))
-        )}
-      </div>
+    ))
+  )}
+</div>
     </div>
   );
 };
