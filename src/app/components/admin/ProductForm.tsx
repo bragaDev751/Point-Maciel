@@ -11,6 +11,7 @@ interface ProdutoMutation {
   categoria_nome: string;
   descricao?: string;
   image?: string;
+  imagem_url?: string;
   tenant_id: string;
   hora_inicio?: string;
   hora_fim?: string;
@@ -149,8 +150,7 @@ export const ProductForm = () => {
     setUploading(true);
 
     try {
-      let imageUrl = previewUrl;
-
+      let imageUrl = previewUrl?.startsWith("http") ? previewUrl : null;
       if (imageFile) {
         imageUrl = await uploadImagem(imageFile);
       }
@@ -169,9 +169,10 @@ export const ProductForm = () => {
         disponivel_sempre: disponivelSempre,
         unidade_medida: unidadeMedida,
         image: imageUrl ?? undefined,
+        imagem_url: imageUrl ?? undefined,
 
-        qtd_sabores_gratis: parseInt(qtdSabores),
-        qtd_extras_max: parseInt(qtdExtras),
+        qtd_sabores_gratis: parseInt(qtdSabores) || 0,
+        qtd_extras_max: parseInt(qtdExtras) || 0,
       };
 
       const { error } = editandoId
@@ -383,7 +384,11 @@ export const ProductForm = () => {
             disabled={uploading}
             className="flex-[2] bg-[#ffcc00] text-[#3b013b] p-5 rounded-[1.5rem] font-black uppercase text-xs tracking-widest active:scale-95 transition-all shadow-xl shadow-[#ffcc00]/10 disabled:opacity-50"
           >
-            {uploading ? "Processando..." : editandoId ? "Salvar Alterações" : "Cadastrar no Cardápio"}
+            {uploading
+              ? "Processando..."
+              : editandoId
+                ? "Salvar Alterações"
+                : "Cadastrar no Cardápio"}
           </button>
 
           {editandoId && (

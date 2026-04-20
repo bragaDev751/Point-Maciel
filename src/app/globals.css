@@ -17,6 +17,8 @@ body {
   width: 100%;
   position: relative;
   background-color: var(--color-brand-dark);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 @utility no-scrollbar {
@@ -25,4 +27,27 @@ body {
   }
   -ms-overflow-style: none;
   scrollbar-width: none;
+}
+
+@utility custom-scrollbar {
+  &::-webkit-scrollbar {
+    width: 4px;
+  }
+  &::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 10px;
+  }
+  &::-webkit-scrollbar-thumb {
+    background: var(--color-brand-gold);
+    border-radius: 10px;
+  }
+}
+
+input[type="time"]::-webkit-calendar-picker-indicator {
+  filter: invert(1);
+  opacity: 0.5;
+}
+
+button {
+  touch-action: manipulation;
 }

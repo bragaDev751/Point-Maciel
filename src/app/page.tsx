@@ -220,7 +220,8 @@ function HomeContent() {
       <Header cartCount={carrinho.length} isAnimating={animarCarrinho} />
 
       {etapa === "menu" ? (
-        <div className="pb-40">
+        <div className="pb-40 max-w-full overflow-hidden">
+          {" "}
           <nav className="flex gap-2 overflow-x-auto px-6 py-6 sticky top-0 bg-[#1a011a]/90 backdrop-blur-md z-30 no-scrollbar max-w-full">
             <button
               onClick={() => setCatAtiva("Todos")}
@@ -248,8 +249,8 @@ function HomeContent() {
               </button>
             ))}
           </nav>
-
-          <section className="px-6 grid gap-4 max-w-2xl mx-auto">
+          <section className="px-6 grid gap-4 max-w-2xl mx-auto w-full box-border">
+            {" "}
             {loading ? (
               <div className="py-20 text-center opacity-20 animate-pulse font-black uppercase text-[10px] tracking-widest">
                 Sincronizando...
@@ -266,7 +267,6 @@ function HomeContent() {
               </div>
             )}
           </section>
-
           <Footer />
         </div>
       ) : (
@@ -331,7 +331,8 @@ function HomeContent() {
 
 export default function Home() {
   return (
-    <main className="min-h-screen bg-[#1a011a] text-white">
+    <main className="min-h-screen bg-[#1a011a] text-white w-full overflow-x-hidden">
+      {" "}
       <Suspense
         fallback={
           <div className="p-10 text-center opacity-20">Iniciando...</div>
