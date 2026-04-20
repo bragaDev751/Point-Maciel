@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect, Suspense, useMemo } from "react";import { AnimatePresence } from "framer-motion";
+import { useState, useEffect, Suspense, useMemo } from "react";
+import { AnimatePresence } from "framer-motion";
 import { Toaster, toast } from "react-hot-toast";
 import { supabase } from "@/lib/supabase";
 import { useSearchParams } from "next/navigation";
@@ -35,16 +36,22 @@ function HomeContent() {
   const [animarCarrinho, setAnimarCarrinho] = useState(false);
   const [loading, setLoading] = useState(true);
   const [lojaAberta, setLojaAberta] = useState(true);
-  const [produtoSelecionado, setProdutoSelecionado] = useState<Produto | null>(null);
+  const [produtoSelecionado, setProdutoSelecionado] = useState<Produto | null>(
+    null,
+  );
   const [nome, setNome] = useState("");
   const [endereco, setEndereco] = useState("");
-  const [tipoEntrega, setTipoEntrega] = useState<"delivery" | "retirada" | "mesa">("delivery");
+  const [tipoEntrega, setTipoEntrega] = useState<
+    "delivery" | "retirada" | "mesa"
+  >("delivery");
 
   // PERSISTÊNCIA
   useEffect(() => {
     const carrinhoSalvo = localStorage.getItem("@PointMaciel:carrinho");
     if (carrinhoSalvo) {
-      try { setCarrinho(JSON.parse(carrinhoSalvo)); } catch {}
+      try {
+        setCarrinho(JSON.parse(carrinhoSalvo));
+      } catch {}
     }
     const nomeSalvo = localStorage.getItem("@PointMaciel:nome");
     if (nomeSalvo) setNome(nomeSalvo);
@@ -63,10 +70,25 @@ function HomeContent() {
       try {
         setLoading(true);
         const [resCat, resProd, resConfig, resComp] = await Promise.all([
-          supabase.from("categorias").select("*").eq("tenant_id", TENANT_ID_MACIEL).order("ordem", { ascending: true }),
-          supabase.from("produtos").select("*").eq("tenant_id", TENANT_ID_MACIEL).order("id", { ascending: false }),
-          supabase.from("config_loja").select("esta_aberta").eq("tenant_id", TENANT_ID_MACIEL).single(),
-          supabase.from("complementos").select("*").eq("tenant_id", TENANT_ID_MACIEL)
+          supabase
+            .from("categorias")
+            .select("*")
+            .eq("tenant_id", TENANT_ID_MACIEL)
+            .order("ordem", { ascending: true }),
+          supabase
+            .from("produtos")
+            .select("*")
+            .eq("tenant_id", TENANT_ID_MACIEL)
+            .order("id", { ascending: false }),
+          supabase
+            .from("config_loja")
+            .select("esta_aberta")
+            .eq("tenant_id", TENANT_ID_MACIEL)
+            .single(),
+          supabase
+            .from("complementos")
+            .select("*")
+            .eq("tenant_id", TENANT_ID_MACIEL),
         ]);
 
         if (resCat.error) throw resCat.error;
@@ -96,47 +118,56 @@ function HomeContent() {
     toast.success("Pedido enviado!", { duration: 5000, icon: "🔥" });
   };
 
-const handleAdd = (p: Produto) => {
-  if (!p) return;
+  const handleAdd = (p: Produto) => {
+    if (!p) return;
 
-  const format = (t: string) => 
-    (t || "").toLowerCase().trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    const format = (t: string) =>
+      (t || "")
+        .toLowerCase()
+        .trim()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "");
 
-  const pCat = format(p.categoria_nome);
-  const pNome = format(p.nome);
+    const pCat = format(p.categoria_nome);
+    const pNome = format(p.nome);
 
-  const ehLanche = pCat === "artesanais" || 
-                   pCat === "artesanal" ||
-                   pCat === "hamburgueres" || 
-                   pCat === "hamburguer" || 
-                   pCat === "lanches" ||
-                   pCat === "lanche" ||
-                   pNome.includes("burger");
+    const ehLanche =
+      pCat === "artesanais" ||
+      pCat === "artesanal" ||
+      pCat === "hamburgueres" ||
+      pCat === "hamburguer" ||
+      pCat === "lanches" ||
+      pCat === "lanche" ||
+      pNome.includes("burger");
 
-  const ehAcai = pCat === "acai";
-  const ehSorvete = pCat === "sorvete" || pCat === "sorvetes";
+    const ehAcai = pCat === "acai";
+    const ehSorvete = pCat === "sorvete" || pCat === "sorvetes";
 
-  if (ehLanche || ehAcai || ehSorvete) {
-    setProdutoSelecionado(p);
-    return;
-  }
+    if (ehLanche || ehAcai || ehSorvete) {
+      setProdutoSelecionado(p);
+      return;
+    }
 
-  const temComplementos = complementos?.some(c => {
-    const cPai = format(c.categoria_pai);
-    return pCat === cPai; 
-  });
+    const temComplementos = complementos?.some((c) => {
+      const cPai = format(c.categoria_pai);
+      return pCat === cPai;
+    });
 
-  if (temComplementos) {
-    setProdutoSelecionado(p);
-    return;
-  }
+    if (temComplementos) {
+      setProdutoSelecionado(p);
+      return;
+    }
 
-  setCarrinho((prev) => [...prev, p]);
-  setAnimarCarrinho(true);
-  toast.success(`${p.nome} adicionado!`);
-  setTimeout(() => setAnimarCarrinho(false), 300);
-};
-  const confirmarAdicaoModal = (p: Produto, qtdTotal: number, extras?: ComplementoSelecao[]) => {
+    setCarrinho((prev) => [...prev, p]);
+    setAnimarCarrinho(true);
+    toast.success(`${p.nome} adicionado!`);
+    setTimeout(() => setAnimarCarrinho(false), 300);
+  };
+  const confirmarAdicaoModal = (
+    p: Produto,
+    qtdTotal: number,
+    extras?: ComplementoSelecao[],
+  ) => {
     const precoExtras =
       extras?.reduce((acc, comp) => {
         return acc + (comp.preco || 0) * comp.quantidade_selecionada;
@@ -166,16 +197,16 @@ const handleAdd = (p: Produto) => {
   const handleRemove = (index: number) => {
     setCarrinho((prev) => prev.filter((_, i) => i !== index));
   };
-const produtosFiltrados = useMemo(() => {
-  if (catAtiva === "Todos") return produtos;
-  
-  return produtos.filter((p: Produto) => { 
-    const pCat = p.categoria_nome?.trim().toLowerCase() || "";
-    const activeCat = catAtiva.trim().toLowerCase();
-    
-    return pCat.includes(activeCat) || activeCat.includes(pCat);
-  });
-}, [catAtiva, produtos]);
+  const produtosFiltrados = useMemo(() => {
+    if (catAtiva === "Todos") return produtos;
+
+    return produtos.filter((p: Produto) => {
+      const pCat = p.categoria_nome?.trim().toLowerCase() || "";
+      const activeCat = catAtiva.trim().toLowerCase();
+
+      return pCat.includes(activeCat) || activeCat.includes(pCat);
+    });
+  }, [catAtiva, produtos]);
   return (
     <>
       <Toaster position="top-center" />
@@ -190,32 +221,39 @@ const produtosFiltrados = useMemo(() => {
 
       {etapa === "menu" ? (
         <div className="pb-40">
-          <nav className="flex gap-2 overflow-x-auto px-6 py-6 sticky top-0 bg-[#1a011a]/90 backdrop-blur-md z-30 no-scrollbar">
+          <nav className="flex gap-2 overflow-x-auto px-6 py-6 sticky top-0 bg-[#1a011a]/90 backdrop-blur-md z-30 no-scrollbar max-w-full">
             <button
               onClick={() => setCatAtiva("Todos")}
-              className={`px-6 py-3 rounded-2xl font-black text-[10px] uppercase transition-all ${
-                catAtiva === "Todos" ? "bg-[#ffcc00] text-[#3b013b]" : "bg-white/5 text-white/40"
+              className={`px-6 py-3 rounded-2xl font-black text-[10px] uppercase transition-all flex-none ${
+                catAtiva === "Todos"
+                  ? "bg-[#ffcc00] text-[#3b013b]"
+                  : "bg-white/5 text-white/40"
               }`}
             >
               🏠 Todos
             </button>
+
             {categorias.map((cat) => (
               <button
                 key={cat.id}
                 onClick={() => setCatAtiva(cat.nome)}
-                className={`px-6 py-3 rounded-2xl font-black text-[10px] flex gap-2 items-center transition-all ${
-                  catAtiva === cat.nome ? "bg-[#ffcc00] text-[#3b013b] scale-105 shadow-lg shadow-yellow-400/20" : "bg-white/5 text-white/40"
+                className={`px-6 py-3 rounded-2xl font-black text-[10px] flex gap-2 items-center transition-all flex-none ${
+                  catAtiva === cat.nome
+                    ? "bg-[#ffcc00] text-[#3b013b] scale-105 shadow-lg shadow-yellow-400/20"
+                    : "bg-white/5 text-white/40"
                 }`}
               >
-                <span>{cat.emoji}</span>
-                <span className="uppercase">{cat.nome}</span>
+                <span className="flex-none">{cat.emoji}</span>
+                <span className="uppercase whitespace-nowrap">{cat.nome}</span>
               </button>
             ))}
           </nav>
 
           <section className="px-6 grid gap-4 max-w-2xl mx-auto">
             {loading ? (
-              <div className="py-20 text-center opacity-20 animate-pulse font-black uppercase text-[10px] tracking-widest">Sincronizando...</div>
+              <div className="py-20 text-center opacity-20 animate-pulse font-black uppercase text-[10px] tracking-widest">
+                Sincronizando...
+              </div>
             ) : produtosFiltrados.length > 0 ? (
               <AnimatePresence mode="popLayout">
                 {produtosFiltrados.map((p) => (
@@ -223,7 +261,9 @@ const produtosFiltrados = useMemo(() => {
                 ))}
               </AnimatePresence>
             ) : (
-              <div className="py-20 text-center text-white/20 italic">Nenhum item nesta categoria</div>
+              <div className="py-20 text-center text-white/20 italic">
+                Nenhum item nesta categoria
+              </div>
             )}
           </section>
 
@@ -267,9 +307,13 @@ const produtosFiltrados = useMemo(() => {
                   <div className="bg-[#3b013b] text-[#ffcc00] w-8 h-8 rounded-xl flex items-center justify-center text-xs">
                     {carrinho.length}
                   </div>
-                  <span className="uppercase text-[11px] tracking-[0.2em]">Ver Pedido</span>
+                  <span className="uppercase text-[11px] tracking-[0.2em]">
+                    Ver Pedido
+                  </span>
                 </div>
-                <span className="text-2xl font-black italic">R$ {total.toFixed(2)}</span>
+                <span className="text-2xl font-black italic">
+                  R$ {total.toFixed(2)}
+                </span>
               </button>
             ) : (
               <div className="w-full bg-white/5 border border-white/10 p-4 rounded-[2rem] text-center backdrop-blur-md">
@@ -288,7 +332,11 @@ const produtosFiltrados = useMemo(() => {
 export default function Home() {
   return (
     <main className="min-h-screen bg-[#1a011a] text-white">
-      <Suspense fallback={<div className="p-10 text-center opacity-20">Iniciando...</div>}>
+      <Suspense
+        fallback={
+          <div className="p-10 text-center opacity-20">Iniciando...</div>
+        }
+      >
         <HomeContent />
       </Suspense>
     </main>

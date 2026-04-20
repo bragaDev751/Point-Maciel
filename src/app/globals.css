@@ -9,4 +9,20 @@
 :root {
   background-color: var(--color-brand-dark);
   color: white;
+  overflow-x: hidden;
+}
+
+body {
+  overflow-x: hidden;
+  width: 100%;
+  position: relative;
+  background-color: var(--color-brand-dark);
+}
+
+@utility no-scrollbar {
+  &::-webkit-scrollbar {
+    display: none;
+  }
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }
