@@ -1,6 +1,6 @@
 {
   "name": "Point do Maciel",
-  "short_name": "PointMaciel",
+  "short_name": "Point Maciel",
   "description": "Cardápio Digital Point do Maciel",
   "start_url": "/",
   "display": "standalone",
@@ -8,9 +8,10 @@
   "theme_color": "#ffcc00",
   "icons": [
     {
-      "src": "/icon-192x192.png",
-      "sizes": "192x192",
-      "type": "image/png"
+      "src": "/icon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
     }
   ]
 }
