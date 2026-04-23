@@ -303,72 +303,88 @@ export const CheckoutForm = ({
       animate={{ opacity: 1, y: 0 }}
       className="p-4 max-w-2xl mx-auto pb-24"
     >
-      <div className="space-y-3 mb-6">
-        <div className="flex justify-between items-center px-2">
-          <h3 className="text-[10px] font-black uppercase text-white/20 tracking-widest">
-            Seu Carrinho
-          </h3>
-          <button
-            onClick={onBack}
-            className="text-[10px] font-black uppercase text-yellow-400 border-b border-yellow-400/20"
-          >
-            + Adicionar mais
-          </button>
-        </div>
+<div className="flex items-center gap-4 mb-6">
+  <button 
+    onClick={onBack}
+    className="bg-white/5 p-3 rounded-2xl border border-white/10 text-yellow-400 active:scale-90 transition-all"
+  >
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+      <path d="m15 18-6-6 6-6"/>
+    </svg>
+  </button>
 
-        <AnimatePresence>
-          {carrinho.map((item, index) => (
-            <motion.div
-              key={`${item.id}-${index}`}
-              layout
-              className="bg-white/5 p-5 rounded-[2.5rem] border border-white/5 space-y-3"
-            >
-              <div className="flex justify-between items-start">
-                <div className="flex gap-4">
-                  <div className="w-14 h-14 rounded-2xl overflow-hidden bg-black/40 border border-white/10 flex-shrink-0">
-                    <img
-                      src={item.imagem_url || item.image || 'https://via.placeholder.com/150'}
-                      className="w-full h-full object-cover"
-                      alt={item.nome}
-                    />
-                  </div>
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
-                      <p className="font-black text-sm uppercase italic text-white truncate">
-                        {item.nome}
-                      </p>
-                      {item.categoria_nome === "Artesanais" && (
-                        <span className="bg-yellow-400 text-black text-[7px] font-black px-1.5 py-0.5 rounded-full uppercase">
-                          Premium
-                        </span>
-                      )}
-                    </div>
-                    {item.descricao && (
-                      <p className="text-[10px] text-yellow-400/80 font-bold leading-tight">
-                        {item.descricao}
-                      </p>
-                    )}
-                  </div>
-                </div>
-                <button
-                  onClick={() => onRemove(index)}
-                  className="bg-red-500/10 text-red-500 p-2 rounded-xl text-[9px] font-black uppercase"
-                >
-                  Remover
-                </button>
-              </div>
-              <div className="flex justify-between items-center pt-2 border-t border-white/5">
-                <span className="text-[9px] font-black text-white/20 uppercase tracking-widest">
-                  Subtotal
-                </span>
-                <span className="text-yellow-400 font-black italic">
-                  R$ {item.preco.toFixed(2)}
-                </span>
-              </div>
-            </motion.div>
-          ))}
-        </AnimatePresence>
-      </div>
+  <div>
+    <h2 className="text-xl font-black italic uppercase tracking-tighter text-white">
+      Finalizar Pedido
+    </h2>
+    <p className="text-[9px] font-bold text-white/20 uppercase tracking-[0.2em]">
+      Point Maciel
+    </p>
+  </div>
+</div>
+
+<div className="space-y-3 mb-8">
+  <h3 className="text-[10px] font-black uppercase text-white/20 tracking-widest px-2">
+    Seu Carrinho ({carrinho.length})
+  </h3>
+
+  <AnimatePresence>
+    {carrinho.map((item, index) => (
+      <motion.div
+        key={`${item.id}-${index}`}
+        layout
+        className="bg-white/5 p-4 rounded-[2rem] border border-white/5"
+      >
+        <div className="flex gap-3 items-center">
+          
+          {/* IMAGEM */}
+          <div className="w-12 h-12 rounded-xl overflow-hidden bg-black/40 border border-white/10 flex-shrink-0">
+            <img
+              src={item.imagem_url || item.image || 'https://via.placeholder.com/150'}
+              className="w-full h-full object-cover"
+              alt={item.nome}
+            />
+          </div>
+          
+          {/* TEXTO */}
+          <div className="flex-1 min-w-0">
+            <p className="font-black text-[12px] uppercase italic text-white truncate">
+              {item.nome}
+            </p>
+
+            {item.descricao && (
+              <p className="text-[9px] text-yellow-400/80 font-bold truncate">
+                {item.descricao}
+              </p>
+            )}
+
+            <p className="text-yellow-400 font-black italic text-[11px] mt-0.5">
+              R$ {item.preco.toFixed(2)}
+            </p>
+          </div>
+
+          {/* REMOVER */}
+          <button
+            onClick={() => onRemove(index)}
+            className="bg-red-500/10 text-red-500 p-2.5 rounded-xl active:bg-red-500 active:text-white"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M3 6h18m-2 0v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6m3 0V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/>
+            </svg>
+          </button>
+
+        </div>
+      </motion.div>
+    ))}
+  </AnimatePresence>
+
+  <button
+    onClick={onBack}
+    className="w-full py-3 text-[10px] font-black uppercase text-yellow-400/50 border border-dashed border-white/10 rounded-2xl"
+  >
+    + Adicionar mais itens
+  </button>
+</div>
 
       <div className="bg-[#1a011a] p-6 rounded-[2.5rem] border border-white/10 space-y-6 shadow-2xl">
         <h2 className="text-xl font-black italic uppercase tracking-tighter text-white">
