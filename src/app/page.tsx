@@ -118,7 +118,7 @@ function HomeContent() {
     toast.success("Pedido enviado!", { duration: 5000, icon: "🔥" });
   };
 
-  const handleAdd = (p: Produto) => {
+ const handleAdd = (p: Produto) => {
   if (!p) return;
 
   const format = (t: string) =>
@@ -127,30 +127,35 @@ function HomeContent() {
       .trim()
       .normalize("NFD")
       .replace(/[\u0300-\u036f]/g, "")
-      .replace(/s$/, ""); // trata plural
+      .replace(/s$/, "");
 
   const pCat = format(p.categoria_nome);
   const pNome = format(p.nome);
 
-  const categoriasLanche = ["artesanal", "hamburguer", "lanche"];
+  const categoriasComComplementos = [
+    "artesanal",
+    "hamburguer",
+    "lanche",
+    "sanduiche",
+    "acai",
+    "sorvete",
+  ];
 
-  const ehLanche =
-    categoriasLanche.includes(pCat) || pNome.includes("burger");
+  const ehSanduiche =
+    categoriasComComplementos.includes(pCat) ||
+    pNome.includes("burger");
 
-  const ehAcai = pCat === "acai";
-  const ehSorvete = pCat === "sorvete";
-
-  if (ehLanche || ehAcai || ehSorvete) {
+  if (ehSanduiche) {
     setProdutoSelecionado(p);
     return;
   }
 
-  const temComplementos = complementos?.some((c) => {
+  const temComplementosNoBanco = complementos?.some((c) => {
     const cPai = format(c.categoria_pai);
     return pCat === cPai;
   });
 
-  if (temComplementos) {
+  if (temComplementosNoBanco) {
     setProdutoSelecionado(p);
     return;
   }
