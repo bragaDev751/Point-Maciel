@@ -31,7 +31,7 @@ function HomeContent() {
   const [categorias, setCategorias] = useState<Categoria[]>([]);
   const [complementos, setComplementos] = useState<Complemento[]>([]);
   const [carrinho, setCarrinho] = useState<Produto[]>([]);
-  const [catAtiva, setCatAtiva] = useState("Todos");
+  const [catAtiva, setCatAtiva] = useState("Destaques");
   const [etapa, setEtapa] = useState<"menu" | "checkout">("menu");
   const [animarCarrinho, setAnimarCarrinho] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -79,7 +79,7 @@ function HomeContent() {
             .from("produtos")
             .select("*")
             .eq("tenant_id", TENANT_ID_MACIEL)
-            .order("id", { ascending: false }),
+            .order("vendas_contagem", { ascending: false }),
           supabase
             .from("config_loja")
             .select("esta_aberta")
@@ -118,53 +118,52 @@ function HomeContent() {
     toast.success("Pedido enviado!", { duration: 5000, icon: "🔥" });
   };
 
- const handleAdd = (p: Produto) => {
-  if (!p) return;
+  const handleAdd = (p: Produto) => {
+    if (!p) return;
 
-  const format = (t: string) =>
-    (t || "")
-      .toLowerCase()
-      .trim()
-      .normalize("NFD")
-      .replace(/[\u0300-\u036f]/g, "")
-      .replace(/s$/, "");
+    const format = (t: string) =>
+      (t || "")
+        .toLowerCase()
+        .trim()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .replace(/s$/, "");
 
-  const pCat = format(p.categoria_nome);
-  const pNome = format(p.nome);
+    const pCat = format(p.categoria_nome);
+    const pNome = format(p.nome);
 
-  const categoriasComComplementos = [
-    "artesanal",
-    "hamburguer",
-    "lanche",
-    "sanduiche",
-    "acai",
-    "sorvete",
-  ];
+    const categoriasComComplementos = [
+      "artesanal",
+      "hamburguer",
+      "lanche",
+      "sanduiche",
+      "acai",
+      "sorvete",
+    ];
 
-  const ehSanduiche =
-    categoriasComComplementos.includes(pCat) ||
-    pNome.includes("burger");
+    const ehSanduiche =
+      categoriasComComplementos.includes(pCat) || pNome.includes("burger");
 
-  if (ehSanduiche) {
-    setProdutoSelecionado(p);
-    return;
-  }
+    if (ehSanduiche) {
+      setProdutoSelecionado(p);
+      return;
+    }
 
-  const temComplementosNoBanco = complementos?.some((c) => {
-    const cPai = format(c.categoria_pai);
-    return pCat === cPai;
-  });
+    const temComplementosNoBanco = complementos?.some((c) => {
+      const cPai = format(c.categoria_pai);
+      return pCat === cPai;
+    });
 
-  if (temComplementosNoBanco) {
-    setProdutoSelecionado(p);
-    return;
-  }
+    if (temComplementosNoBanco) {
+      setProdutoSelecionado(p);
+      return;
+    }
 
-  setCarrinho((prev) => [...prev, p]);
-  setAnimarCarrinho(true);
-  toast.success(`${p.nome} adicionado!`);
-  setTimeout(() => setAnimarCarrinho(false), 300);
-};
+    setCarrinho((prev) => [...prev, p]);
+    setAnimarCarrinho(true);
+    toast.success(`${p.nome} adicionado!`);
+    setTimeout(() => setAnimarCarrinho(false), 300);
+  };
   const confirmarAdicaoModal = (
     p: Produto,
     qtdTotal: number,
@@ -200,22 +199,29 @@ function HomeContent() {
     setCarrinho((prev) => prev.filter((_, i) => i !== index));
   };
   const produtosFiltrados = useMemo(() => {
-  if (catAtiva === "Todos") return produtos;
+    if (catAtiva === "Destaques") {
+      return produtos.slice(0, 10);
+    }
 
-  const normalizar = (txt: string) => 
-    txt.toLowerCase()
-       .trim()
-       .normalize("NFD")
-       .replace(/[\u0300-\u036f]/g, "") 
-       .replace(/s$/, ""); 
+    const normalizar = (txt: string) =>
+      txt
+        .toLowerCase()
+        .trim()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .replace(/s$/, "");
 
-  return produtos.filter((p: Produto) => {
-    const pCat = normalizar(p.categoria_nome || "");
-    const activeCat = normalizar(catAtiva);
+    return produtos.filter((p: Produto) => {
+      const pCat = normalizar(p.categoria_nome || "");
+      const activeCat = normalizar(catAtiva);
 
-    return pCat === activeCat || pCat.includes(activeCat) || activeCat.includes(pCat);
-  });
-}, [catAtiva, produtos]);
+      return (
+        pCat === activeCat ||
+        pCat.includes(activeCat) ||
+        activeCat.includes(pCat)
+      );
+    });
+  }, [catAtiva, produtos]);
   return (
     <>
       <Toaster position="top-center" />
@@ -233,14 +239,14 @@ function HomeContent() {
           {" "}
           <nav className="flex gap-2 overflow-x-auto px-6 py-6 sticky top-0 bg-[#1a011a]/90 backdrop-blur-md z-30 no-scrollbar max-w-full">
             <button
-              onClick={() => setCatAtiva("Todos")}
+              onClick={() => setCatAtiva("Destaques")}
               className={`px-6 py-3 rounded-2xl font-black text-[10px] uppercase transition-all flex-none ${
-                catAtiva === "Todos"
+                catAtiva === "Destaques"
                   ? "bg-[#ffcc00] text-[#3b013b]"
                   : "bg-white/5 text-white/40"
               }`}
             >
-              🏠 Todos
+              🌟 Destaques
             </button>
 
             {categorias.map((cat) => (
