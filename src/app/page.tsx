@@ -119,50 +119,47 @@ function HomeContent() {
   };
 
   const handleAdd = (p: Produto) => {
-    if (!p) return;
+  if (!p) return;
 
-    const format = (t: string) =>
-      (t || "")
-        .toLowerCase()
-        .trim()
-        .normalize("NFD")
-        .replace(/[\u0300-\u036f]/g, "");
+  const format = (t: string) =>
+    (t || "")
+      .toLowerCase()
+      .trim()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/s$/, ""); // trata plural
 
-    const pCat = format(p.categoria_nome);
-    const pNome = format(p.nome);
+  const pCat = format(p.categoria_nome);
+  const pNome = format(p.nome);
 
-    const ehLanche =
-      pCat === "artesanais" ||
-      pCat === "artesanal" ||
-      pCat === "hamburgueres" ||
-      pCat === "hamburguer" ||
-      pCat === "lanches" ||
-      pCat === "lanche" ||
-      pNome.includes("burger");
+  const categoriasLanche = ["artesanal", "hamburguer", "lanche"];
 
-    const ehAcai = pCat === "acai";
-    const ehSorvete = pCat === "sorvete" || pCat === "sorvetes";
+  const ehLanche =
+    categoriasLanche.includes(pCat) || pNome.includes("burger");
 
-    if (ehLanche || ehAcai || ehSorvete) {
-      setProdutoSelecionado(p);
-      return;
-    }
+  const ehAcai = pCat === "acai";
+  const ehSorvete = pCat === "sorvete";
 
-    const temComplementos = complementos?.some((c) => {
-      const cPai = format(c.categoria_pai);
-      return pCat === cPai;
-    });
+  if (ehLanche || ehAcai || ehSorvete) {
+    setProdutoSelecionado(p);
+    return;
+  }
 
-    if (temComplementos) {
-      setProdutoSelecionado(p);
-      return;
-    }
+  const temComplementos = complementos?.some((c) => {
+    const cPai = format(c.categoria_pai);
+    return pCat === cPai;
+  });
 
-    setCarrinho((prev) => [...prev, p]);
-    setAnimarCarrinho(true);
-    toast.success(`${p.nome} adicionado!`);
-    setTimeout(() => setAnimarCarrinho(false), 300);
-  };
+  if (temComplementos) {
+    setProdutoSelecionado(p);
+    return;
+  }
+
+  setCarrinho((prev) => [...prev, p]);
+  setAnimarCarrinho(true);
+  toast.success(`${p.nome} adicionado!`);
+  setTimeout(() => setAnimarCarrinho(false), 300);
+};
   const confirmarAdicaoModal = (
     p: Produto,
     qtdTotal: number,
@@ -198,15 +195,22 @@ function HomeContent() {
     setCarrinho((prev) => prev.filter((_, i) => i !== index));
   };
   const produtosFiltrados = useMemo(() => {
-    if (catAtiva === "Todos") return produtos;
+  if (catAtiva === "Todos") return produtos;
 
-    return produtos.filter((p: Produto) => {
-      const pCat = p.categoria_nome?.trim().toLowerCase() || "";
-      const activeCat = catAtiva.trim().toLowerCase();
+  const normalizar = (txt: string) => 
+    txt.toLowerCase()
+       .trim()
+       .normalize("NFD")
+       .replace(/[\u0300-\u036f]/g, "") 
+       .replace(/s$/, ""); 
 
-      return pCat.includes(activeCat) || activeCat.includes(pCat);
-    });
-  }, [catAtiva, produtos]);
+  return produtos.filter((p: Produto) => {
+    const pCat = normalizar(p.categoria_nome || "");
+    const activeCat = normalizar(catAtiva);
+
+    return pCat === activeCat || pCat.includes(activeCat) || activeCat.includes(pCat);
+  });
+}, [catAtiva, produtos]);
   return (
     <>
       <Toaster position="top-center" />
