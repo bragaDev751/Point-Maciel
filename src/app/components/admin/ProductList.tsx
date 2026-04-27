@@ -249,21 +249,40 @@ const produtosFiltrados = useMemo(() => {
 />
                 </div>
 
-                {/* Textos - Flexível com Truncate */}
-                <div className="min-w-0 flex-1">
-                  <span className="text-[7px] md:text-[8px] text-[#ffcc00] font-bold uppercase tracking-wider block truncate">
-                    {p.categoria_nome}
-                  </span>
-                  <p
-                    className={`font-bold text-xs md:text-sm leading-tight truncate ${p.disponivel ? "text-white" : "text-white/30"}`}
-                  >
-                    {p.nome}
-                  </p>
-                  <p className="text-[#ffcc00] font-black italic text-[11px] md:text-sm">
-                    R$ {p.preco.toFixed(2)}
-                  </p>
-                </div>
-              </div>
+<div className="min-w-0 flex-1">
+  <div className="flex items-center gap-2 mb-0.5">
+    <span className="text-[7px] md:text-[8px] text-[#ffcc00] font-bold uppercase tracking-wider block truncate">
+      {p.categoria_nome}
+    </span>
+
+    {p.categoria_nome?.toLowerCase().includes("monte seu cuscuz") && (
+      <span className="bg-[#ffcc00] text-[#3b013b] text-[7px] px-1.5 py-0.5 rounded-full font-black uppercase tracking-tighter">
+        Combo • {p.qtd_sabores_gratis || 2} Recheios
+      </span>
+    )}
+  </div>
+
+  <p
+    className={`font-bold text-xs md:text-sm leading-tight truncate ${
+      p.disponivel ? "text-white" : "text-white/30"
+    }`}
+  >
+    {p.nome}
+  </p>
+
+  <div className="flex items-center gap-2">
+    <p className="text-[#ffcc00] font-black italic text-[11px] md:text-sm">
+      R$ {p.preco.toFixed(2)}
+    </p>
+
+    {/* 🔥 INDICADOR DE ITEM GRÁTIS */}
+    {p.preco === 0 && (
+      <span className="text-[9px] text-green-400 font-bold uppercase italic">
+        (Grátis no Combo)
+      </span>
+    )}
+  </div>
+</div> 
 
               {/* DIREITA: Botões de Ação - BLINDADOS (flex-none) */}
               <div className="flex gap-1.5 ml-2 flex-none">
@@ -288,9 +307,12 @@ const produtosFiltrados = useMemo(() => {
                 </button>
               </div>
             </div>
+        </div>
           ))
         )}
+        
       </div>
     </div>
+    
   );
 };

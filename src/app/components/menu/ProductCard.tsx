@@ -28,6 +28,8 @@ export const ProductCard = ({ produto, onAdd }: ProductCardProps) => {
   };
 
   const disponivel = estaDisponivelAgora();
+  const isMonteSeu = produto.categoria_nome?.toLowerCase().includes("monte seu cuscuz");
+  
   const imagemFinal = produto.imagem_url || produto.image || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=400';
 
   return (
@@ -36,21 +38,26 @@ export const ProductCard = ({ produto, onAdd }: ProductCardProps) => {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, scale: 0.95 }}
-      // Reduzi o padding de p-3 para p-2.5 para ganhar 8px extras de largura no mobile
       className={`bg-white/5 border border-white/10 rounded-[1.8rem] p-2.5 flex items-center gap-2.5 group transition-all w-full max-w-full overflow-hidden ${
         !disponivel ? 'opacity-40 grayscale' : 'active:bg-white/10 hover:border-white/20'
       }`}
     >
-      {/* IMAGEM: flex-none com tamanho fixo */}
+      {/* IMAGEM */}
       <div className="relative h-[72px] w-[72px] flex-none"> 
         <img 
           src={imagemFinal} 
           className="h-full w-full rounded-2xl object-cover border border-white/5 shadow-md" 
           alt={produto.nome} 
         />
-        {produto.unidade_medida && disponivel && (
-          <div className="absolute -top-1 -right-1 bg-[#ffcc00] text-[#3b013b] px-1.5 py-0.5 rounded-lg font-black text-[7px] uppercase shadow-lg z-10">
-            {produto.unidade_medida}
+        
+        {/* Badge de Unidade ou Combo */}
+        {disponivel && (
+          <div className="absolute -top-1 -right-1 bg-[#ffcc00] text-[#3b013b] px-1.5 py-0.5 rounded-lg font-black text-[7px] uppercase shadow-lg z-10 flex flex-col items-center leading-none">
+            {isMonteSeu ? (
+              <span>{produto.qtd_sabores_gratis || 2} ITENS</span>
+            ) : (
+              <span>{produto.unidade_medida || 'unid'}</span>
+            )}
           </div>
         )}
         
@@ -63,8 +70,15 @@ export const ProductCard = ({ produto, onAdd }: ProductCardProps) => {
         )}
       </div>
       
-      {/* TEXTO: min-w-0 e flex-1 garantem que ele se ajuste ao espaço que sobra */}
+      {/* TEXTO */}
       <div className="flex-1 min-w-0 flex flex-col justify-center">
+        {/* Categoria Badge Mini */}
+        {isMonteSeu && disponivel && (
+          <span className="text-[7px] font-black text-[#ffcc00] uppercase tracking-widest mb-0.5">
+            ✨ Monte seu Cuscuz
+          </span>
+        )}
+
         <h3 className={`font-black text-xs uppercase italic leading-tight truncate ${!disponivel ? 'text-white/40' : 'text-white'}`}>
           {produto.nome}
         </h3>
@@ -82,13 +96,9 @@ export const ProductCard = ({ produto, onAdd }: ProductCardProps) => {
             </p>
           )}
 
-          {produto.descricao ? (
-            <p className="text-[9px] text-white/40 leading-[1.1] line-clamp-2 font-medium pr-1">
-              {produto.descricao}
-            </p>
-          ) : (
-            <p className="text-[8px] text-white/20 italic">Sabor inconfundível</p>
-          )}
+          <p className="text-[9px] text-white/40 leading-[1.1] line-clamp-2 font-medium pr-1">
+            {produto.descricao || (isMonteSeu ? "Escolha seus recheios favoritos e monte do seu jeito!" : "Sabor inconfundível do Point do Maciel.")}
+          </p>
         </div>
 
         <p className={`font-black italic text-[13px] mt-1 leading-none ${!disponivel ? 'text-white/20' : 'text-[#ffcc00]'}`}>
@@ -96,7 +106,7 @@ export const ProductCard = ({ produto, onAdd }: ProductCardProps) => {
         </p>
       </div>
 
-      {/* BOTÃO: flex-none é obrigatório aqui para ele NÃO sumir */}
+      {/* BOTÃO */}
       <div className="flex-none pl-1">
         <button 
           onClick={() => disponivel && onAdd(produto)}
@@ -107,7 +117,7 @@ export const ProductCard = ({ produto, onAdd }: ProductCardProps) => {
             : "bg-white/5 text-white/10 cursor-not-allowed"
           }`}
         >
-          {disponivel ? '+' : '🔒'}
+          {disponivel ? (isMonteSeu ? '🍴' : '+') : '🔒'}
         </button>
       </div>
     </motion.div>

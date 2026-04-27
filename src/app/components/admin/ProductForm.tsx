@@ -104,18 +104,26 @@ export const ProductForm = () => {
       if (qtdSabores === "0" || qtdSabores === "") {
         setQtdSabores("2");
       }
+
+      setUnidadeMedida("unid");
     }
   }, [categoria]);
   const cancelarEdicao = () => {
+    if (previewUrl && !previewUrl.startsWith("http")) {
+      URL.revokeObjectURL(previewUrl);
+    }
+
     setEditandoId(null);
     setNome("");
     setPreco("");
     setDescricao("");
     setImageFile(null);
     setPreviewUrl(null);
+
     if (listaCategorias.length > 0) {
       setCategoria(listaCategorias[0].nome);
     }
+
     setHoraInicio("00:00");
     setHoraFim("23:59");
     setDisponivelSempre(true);
@@ -128,112 +136,116 @@ export const ProductForm = () => {
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
+
     if (file) {
+      if (previewUrl && !previewUrl.startsWith("http")) {
+        URL.revokeObjectURL(previewUrl);
+      }
+
       setImageFile(file);
       setPreviewUrl(URL.createObjectURL(file));
     }
   };
 
-const uploadImagem = async (file: File) => {
-  if (file.size > 2 * 1024 * 1024) {
-    toast.error("Imagem muito grande! Use fotos de até 2MB.");
-    throw new Error("File too large");
-  }
-
-  const fileExt = file.name.split(".").pop();
-
-  const safeName = `${Date.now()}-${Math.random()
-    .toString(36)
-    .substring(7)}.${fileExt}`;
-
-  const filePath = `${TENANT_ID_MACIEL}/${safeName}`;
-
-  const { error: uploadError } = await supabase.storage
-    .from("produtos")
-    .upload(filePath, file, {
-      cacheControl: "3600",
-      upsert: false,
-    });
-
-  if (uploadError) throw uploadError;
-
-  const { data } = supabase.storage.from("produtos").getPublicUrl(filePath);
-
-  return data.publicUrl;
-};
-
-const salvar = async (e: React.FormEvent) => {
-  e.preventDefault();
-
-  if (!nome || !preco || !categoria) {
-    return toast.error("Preencha nome, preço e categoria!");
-  }
-
-  setUploading(true);
-
-  try {
-    let imageUrl = previewUrl?.startsWith("http") ? previewUrl : null;
-
-    if (imageFile) {
-      imageUrl = await uploadImagem(imageFile);
-
-      // 🧠 ESSENCIAL PRO MAC / SAFARI
-      await new Promise((resolve) => setTimeout(resolve, 400));
+  const uploadImagem = async (file: File) => {
+    if (file.size > 2 * 1024 * 1024) {
+      toast.error("Imagem muito grande! Use fotos de até 2MB.");
+      throw new Error("File too large");
     }
 
-    const hInicio = disponivelSempre ? "00:00:00" : `${horaInicio}:00`;
-    const hFim = disponivelSempre ? "23:59:59" : `${horaFim}:00`;
+    const fileExt = file.name.split(".").pop();
 
-    const saboresFinal =
-      categoria === "Monte seu Cuscuz"
-        ? Math.max(1, parseInt(qtdSabores) || 2)
-        : parseInt(qtdSabores) || 0;
+    const safeName = `${Date.now()}-${Math.random()
+      .toString(36)
+      .substring(7)}.${fileExt}`;
 
-    // ⚡ PAYLOAD LIMPO (SEM DUPLICAÇÃO)
-    const dados: ProdutoMutation = {
-      nome,
-      preco: parseFloat(preco),
-      categoria_nome: categoria,
-      descricao: descricao || "",
-      tenant_id: TENANT_ID_MACIEL,
-      hora_inicio: hInicio,
-      hora_fim: hFim,
-      disponivel_sempre: disponivelSempre,
-      unidade_medida: unidadeMedida,
+    const filePath = `${TENANT_ID_MACIEL}/${safeName}`;
 
-      imagem_url: imageUrl ?? "",
+    const { error: uploadError } = await supabase.storage
+      .from("produtos")
+      .upload(filePath, file, {
+        cacheControl: "3600",
+        upsert: false,
+      });
 
-      qtd_sabores_gratis: saboresFinal,
-      qtd_extras_max: parseInt(qtdExtras) || 0,
-    };
+    if (uploadError) throw uploadError;
 
-    const { error } = editandoId
-      ? await supabase
-          .from("produtos")
-          .update(dados)
-          .eq("id", editandoId)
-          .eq("tenant_id", TENANT_ID_MACIEL)
-      : await supabase.from("produtos").insert([dados]);
+    const { data } = supabase.storage.from("produtos").getPublicUrl(filePath);
 
-    if (error) throw error;
+    return data.publicUrl;
+  };
 
-    toast.success(editandoId ? "Item atualizado!" : "Item adicionado!");
-    cancelarEdicao();
-    window.dispatchEvent(new Event("refreshProducts"));
-   } catch (error: unknown) {
-  console.error("Erro detalhado:", error);
+  const salvar = async (e: React.FormEvent) => {
+    e.preventDefault();
 
-  let mensagem = "Falha na conexão";
+    if (!nome || !preco || !categoria) {
+      return toast.error("Preencha nome, preço e categoria!");
+    }
 
-  if (error instanceof Error) {
-    mensagem = error.message;
-  }
+    setUploading(true);
 
-  toast.error(`Erro: ${mensagem}`);
-} finally {
-    setUploading(false);
-  }
-};
+    try {
+      let imageUrl = previewUrl?.startsWith("http") ? previewUrl : null;
+
+      if (imageFile) {
+        imageUrl = await uploadImagem(imageFile);
+
+        // 🧠 ESSENCIAL PRO MAC / SAFARI
+        await new Promise((resolve) => setTimeout(resolve, 400));
+      }
+
+      const hInicio = disponivelSempre ? "00:00:00" : `${horaInicio}:00`;
+      const hFim = disponivelSempre ? "23:59:59" : `${horaFim}:00`;
+
+      const saboresFinal =
+        categoria === "Monte seu Cuscuz"
+          ? Math.max(1, parseInt(qtdSabores))
+          : parseInt(qtdSabores) || 0;
+
+      const dados: ProdutoMutation = {
+        nome,
+        preco: parseFloat(preco.replace(",", ".")),
+        categoria_nome: categoria,
+        descricao: descricao || "",
+        tenant_id: TENANT_ID_MACIEL,
+        hora_inicio: hInicio,
+        hora_fim: hFim,
+        disponivel_sempre: disponivelSempre,
+        unidade_medida: unidadeMedida,
+
+        imagem_url: imageUrl ?? "",
+
+        qtd_sabores_gratis: saboresFinal,
+        qtd_extras_max: parseInt(qtdExtras) || 0,
+      };
+
+      const { error } = editandoId
+        ? await supabase
+            .from("produtos")
+            .update(dados)
+            .eq("id", editandoId)
+            .eq("tenant_id", TENANT_ID_MACIEL)
+        : await supabase.from("produtos").insert([dados]);
+
+      if (error) throw error;
+
+      toast.success(editandoId ? "Item atualizado!" : "Item adicionado!");
+      cancelarEdicao();
+      window.dispatchEvent(new Event("refreshProducts"));
+    } catch (error: unknown) {
+      console.error("Erro detalhado:", error);
+
+      let mensagem = "Falha na conexão";
+
+      if (error instanceof Error) {
+        mensagem = error.message;
+      }
+
+      toast.error(`Erro: ${mensagem}`);
+    } finally {
+      setUploading(false);
+    }
+  };
 
   return (
     <section

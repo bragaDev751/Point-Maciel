@@ -134,19 +134,17 @@ const isCuscuz = useMemo(() => {
     const matchSorvete =
       categoriaProduto.includes("sorvete") && catPai.includes("sorvete");
 
-    if (isCuscuz) {
-      const matchCuscuz = catPai.includes("cuscuz");
+   if (isCuscuz) {
+  const matchCuscuz = catPai.includes("cuscuz");
 
-      if (categoriaProduto.includes("monte seu cuscuz")) {
-        return (
-          matchCuscuz &&
-          comp.disponivel === true &&
-          Number(comp.preco) === 0
-        );
-      }
+  const isMonteSeuCuscuz = categoriaProduto.includes("monte seu cuscuz");
 
-      return matchCuscuz && comp.disponivel === true;
-    }
+  if (isMonteSeuCuscuz) {
+    return matchCuscuz && comp.disponivel === true;
+  }
+
+  return matchCuscuz && comp.disponivel === true;
+}
 
     return (
       (matchAcai || matchSorvete || catPai === categoriaProduto) &&
