@@ -5,6 +5,8 @@ import { useSearchParams } from "next/navigation";
 import { supabase, TENANT_ID_MACIEL } from "@/lib/supabase";
 import { Produto } from "@/app/types/Index";
 import { CreditCard, Banknote, QrCode, Smartphone, Gift } from "lucide-react";
+import Image from "next/image";
+import LinkPix from "@/public/qrcode-pix.png";
 
 interface CheckoutFormProps {
   carrinho: Produto[];
@@ -171,93 +173,132 @@ export const CheckoutForm = ({
   };
 
   const handleFinalizar = async () => {
-    if (!lojaAberta) return alert("A loja está fechada.");
-    if (!nome.trim()) return alert("Digite seu nome.");
-    if (!telefone.trim()) return alert("Informe seu WhatsApp.");
+  if (!lojaAberta) return alert("A loja está fechada.");
+  if (!nome.trim()) return alert("Digite seu nome.");
+  if (!telefone.trim()) return alert("Informe seu WhatsApp.");
 
-    const telLimpo = telefone.replace(/\D/g, "");
-    let enderecoCompleto = "";
+  const telLimpo = telefone.replace(/\D/g, "");
+  let enderecoCompleto = "";
 
-    if (tipoEntrega === "delivery") {
-      if (!endereco || !bairro || taxaEntrega === 0)
-        return alert("Selecione um bairro válido.");
-      enderecoCompleto = `${endereco}, Nº ${numero} - ${bairro}${
-        referencia ? ` (Ref: ${referencia})` : ""
-      }`;
-    } else if (tipoEntrega === "retirada") {
-      enderecoCompleto = "RETIRADA NO LOCAL";
+  if (tipoEntrega === "delivery") {
+    if (!endereco || !bairro || taxaEntrega === 0)
+      return alert("Selecione um bairro válido.");
+    enderecoCompleto = `${endereco}, Nº ${numero} - ${bairro}${
+      referencia ? ` (Ref: ${referencia})` : ""
+    }`;
+  } else if (tipoEntrega === "retirada") {
+    enderecoCompleto = "RETIRADA NO LOCAL";
+  } else {
+    enderecoCompleto = `COMER NO LOCAL - MESA ${mesaURL || "S/N"}`;
+  }
+
+  setIsEnviando(true);
+
+  try {
+    // Fidelidade
+    if (usarDescontoFidelidade) {
+      const { error } = await supabase
+        .from("fidelidade")
+        .update({
+          pontos_acumulados: pontosDisponiveis - PONTOS_NECESSARIOS,
+        })
+        .eq("tenant_id", TENANT_ID_MACIEL)
+        .eq("cliente_telefone", telLimpo);
+
+      if (error) {
+        console.error("⚠️ Erro fidelidade:", error.message);
+      }
+    }
+
+    // Payload
+    const payloadPedido = {
+      cliente_nome: nome,
+      cliente_telefone: telLimpo,
+      tipo_pedido: tipoEntrega,
+      mesa_numero: tipoEntrega === "mesa" ? mesaURL : null,
+      endereco: enderecoCompleto,
+      total_pedido: totalFinalComTaxa,
+      status: "novo",
+      metodo_pagamento:
+        pagamento + (trocoPara ? ` (Troco p/ ${trocoPara})` : ""),
+      tenant_id: TENANT_ID_MACIEL,
+      itens: carrinho.map((i) => ({
+        id: i.id,
+        nome: i.nome,
+        detalhes: i.descricao,
+        preco: i.preco,
+        qtd: 1,
+      })),
+    };
+
+    // Insert pedido
+    const { data: pedidos, error: errorPedido } = await supabase
+      .from("pedidos")
+      .insert([payloadPedido])
+      .select();
+
+    if (errorPedido) {
+      console.error("❌ ERRO SUPABASE:");
+      console.error("message:", errorPedido.message);
+      console.error("details:", errorPedido.details);
+      console.error("hint:", errorPedido.hint);
+      throw errorPedido;
+    }
+
+    const novoPedido = pedidos?.[0];
+
+    if (!novoPedido) {
+      throw new Error("Pedido não retornado pelo banco.");
+    }
+
+    // Insert itens
+    const itensParaInserir = carrinho.map((item) => ({
+      pedido_id: novoPedido.id,
+      produto_nome: item.nome,
+      quantidade: 1,
+      preco_unitario: item.preco,
+    }));
+
+    const { error: errorItens } = await supabase
+      .from("pedido_itens")
+      .insert(itensParaInserir);
+
+    if (errorItens) {
+      console.error("⚠️ Erro ao inserir itens:", errorItens.message);
+    }
+
+const mensagemPronta = formatarWhats();
+
+if (pagamento === "Pix") {
+  setPedidoFinalizado({
+    id: novoPedido.id,
+    msg: mensagemPronta,
+  });
+  setIsEnviando(false);
+  return;
+}
+
+const linkWhatsapp = `https://wa.me/5588981277642?text=${mensagemPronta}`;
+window.open(linkWhatsapp, "_blank");
+
+setTimeout(() => onConfirm(), 600);
+
+  } catch (err: unknown) {
+    console.error("🔥 ERRO FINAL:", err);
+
+    if (
+      typeof err === "object" &&
+      err !== null &&
+      "message" in err
+    ) {
+      alert(`Erro: ${(err as { message: string }).message}`);
     } else {
-      enderecoCompleto = `COMER NO LOCAL - MESA ${mesaURL || "S/N"}`;
+      alert("Erro desconhecido ao enviar pedido.");
     }
-
-    setIsEnviando(true);
-
-    try {
-      if (usarDescontoFidelidade) {
-        await supabase
-          .from("fidelidade")
-          .update({
-            pontos_acumulados: pontosDisponiveis - PONTOS_NECESSARIOS,
-          })
-          .eq("tenant_id", TENANT_ID_MACIEL)
-          .eq("cliente_telefone", telLimpo);
-      }
-
-      const { data: novoPedido, error: errorPedido } = await supabase
-        .from("pedidos")
-        .insert([
-          {
-            cliente_nome: nome,
-            cliente_telefone: telLimpo,
-            tipo_pedido: tipoEntrega,
-            mesa_numero: tipoEntrega === "mesa" ? mesaURL : null,
-            endereco: enderecoCompleto,
-            total_pedido: totalFinalComTaxa,
-            status: "novo",
-            metodo_pagamento:
-              pagamento + (trocoPara ? ` (Troco p/ ${trocoPara})` : ""),
-            tenant_id: TENANT_ID_MACIEL,
-            itens: carrinho.map((i) => ({
-              id: i.id,
-              nome: i.nome,
-              detalhes: i.descricao,
-              preco: i.preco,
-              qtd: 1,
-            })),
-          },
-        ])
-        .select()
-        .single();
-
-      if (errorPedido) throw errorPedido;
-
-      if (novoPedido) {
-        const itensParaInserir = carrinho.map((item) => ({
-          pedido_id: novoPedido.id,
-          produto_nome: item.nome,
-          quantidade: 1,
-          preco_unitario: item.preco,
-        }));
-        await supabase.from("pedido_itens").insert(itensParaInserir);
-      }
-
-      const mensagem = formatarWhats();
-      const linkWhatsapp = `https://wa.me/5588981277642?text=${mensagem}`;
-
-      if (pagamento === "Pix") {
-        setPedidoFinalizado({ id: novoPedido.id, msg: mensagem });
-        return;
-      }
-
-      window.open(linkWhatsapp, "_blank");
-      setTimeout(() => onConfirm(), 600);
-    } catch (err) {
-      console.error(err);
-      alert("Erro ao enviar pedido.");
-    } finally {
-      setIsEnviando(false);
-    }
-  };
+  } finally {
+    setIsEnviando(false);
+  }
+};
 
   if (pedidoFinalizado) {
     return (
@@ -268,11 +309,15 @@ export const CheckoutForm = ({
       >
         <div className="bg-[#1a011a] p-8 rounded-[3rem] border border-yellow-400/20 space-y-6">
           <h2 className="text-2xl font-black uppercase text-white">Pagamento via Pix</h2>
-          <div className="bg-white p-4 rounded-3xl w-48 h-48 mx-auto flex items-center justify-center">
-             <img src="/qrcode-pix.png" className="w-full h-full object-contain" alt="QR Code Pix" />
-          </div>
-
-          <div className="bg-white/5 p-4 rounded-xl flex justify-between items-center border border-white/10">
+<div className="bg-white p-4 rounded-3xl w-48 h-48 mx-auto flex items-center justify-center relative overflow-hidden">
+  <Image 
+    src="/qrcode-pix.png" 
+    alt="QR Code Pix" 
+    fill
+    className="object-contain p-2"
+    unoptimized 
+  />
+</div>        <div className="bg-white/5 p-4 rounded-xl flex justify-between items-center border border-white/10">
             <span className="text-[10px] text-white/50 font-mono truncate mr-2">{CHAVE_PIX_MACIEL}</span>
             <button 
               onClick={handleCopiarPix}
