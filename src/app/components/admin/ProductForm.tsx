@@ -31,6 +31,7 @@ export const ProductForm = () => {
   const [preco, setPreco] = useState("");
   const [categoria, setCategoria] = useState("");
   const [descricao, setDescricao] = useState("");
+  const isMonteSeu = categoria === "Monte seu Cuscuz";
 
   const [horaInicio, setHoraInicio] = useState("00:00");
   const [horaFim, setHoraFim] = useState("23:59");
@@ -100,14 +101,17 @@ export const ProductForm = () => {
     return () => window.removeEventListener("editProduct", handleEdit);
   }, []);
   useEffect(() => {
-    if (categoria === "Monte seu Cuscuz") {
-      if (qtdSabores === "0" || qtdSabores === "") {
+    if (!editandoId) {
+      if (isMonteSeu) {
         setQtdSabores("2");
+        setQtdExtras("5");
+        setUnidadeMedida("unid");
+      } else {
+        setQtdSabores("0");
+        setQtdExtras("0");
       }
-
-      setUnidadeMedida("unid");
     }
-  }, [categoria]);
+  }, [categoria, editandoId]);
   const cancelarEdicao = () => {
     if (previewUrl && !previewUrl.startsWith("http")) {
       URL.revokeObjectURL(previewUrl);
@@ -190,17 +194,19 @@ export const ProductForm = () => {
       if (imageFile) {
         imageUrl = await uploadImagem(imageFile);
 
-        // 🧠 ESSENCIAL PRO MAC / SAFARI
         await new Promise((resolve) => setTimeout(resolve, 400));
       }
 
       const hInicio = disponivelSempre ? "00:00:00" : `${horaInicio}:00`;
       const hFim = disponivelSempre ? "23:59:59" : `${horaFim}:00`;
 
-      const saboresFinal =
-        categoria === "Monte seu Cuscuz"
-          ? Math.max(1, parseInt(qtdSabores))
-          : parseInt(qtdSabores) || 0;
+      const saboresFinal = isMonteSeu
+        ? Math.max(1, parseInt(qtdSabores || "2"))
+        : 0;
+
+      const extrasFinal = isMonteSeu
+        ? Math.max(0, parseInt(qtdExtras || "5"))
+        : 0;
 
       const dados: ProdutoMutation = {
         nome,
@@ -216,7 +222,7 @@ export const ProductForm = () => {
         imagem_url: imageUrl ?? "",
 
         qtd_sabores_gratis: saboresFinal,
-        qtd_extras_max: parseInt(qtdExtras) || 0,
+        qtd_extras_max: extrasFinal,
       };
 
       const { error } = editandoId
@@ -353,40 +359,50 @@ export const ProductForm = () => {
           />
         </div>
 
-        <div className="grid grid-cols-2 gap-4 bg-white/5 p-6 rounded-[2rem] border border-white/5">
-          <div className="space-y-2">
-            <label className="text-[10px] uppercase font-black text-[#ffcc00] ml-2">
-              Limite de Sabores
-            </label>
-            <input
-              type="number"
-              min={categoria === "Monte seu Cuscuz" ? 1 : 0}
-              value={qtdSabores}
-              onChange={(e) => {
-                const val = parseInt(e.target.value) || 0;
+        <AnimatePresence>
+          {isMonteSeu && (
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              className="grid grid-cols-2 gap-4 bg-[#ffcc00]/5 p-6 rounded-[2rem] border border-[#ffcc00]/20"
+            >
+              <div className="space-y-2">
+                <label className="text-[10px] uppercase font-black text-[#ffcc00] ml-2">
+                  Recheios Grátis
+                </label>
+                <input
+                  type="number"
+                  min={1}
+                  value={qtdSabores}
+                  onChange={(e) => {
+                    const val = e.target.value.replace(/\D/g, "");
+                    setQtdSabores(val || "1");
+                  }}
+                />
+              </div>
 
-                if (categoria === "Monte seu Cuscuz" && val < 1) {
-                  setQtdSabores("1");
-                } else {
-                  setQtdSabores(e.target.value);
-                }
-              }}
-              className="w-full bg-black/20 border border-white/10 p-4 rounded-xl text-white font-bold"
-            />
-          </div>
+              <div className="space-y-2">
+                <label className="text-[10px] uppercase font-black text-[#ffcc00] ml-2">
+                  Limite Extras
+                </label>
+                <input
+                  type="number"
+                  min={0}
+                  value={qtdExtras}
+                  onChange={(e) => {
+                    const val = e.target.value.replace(/\D/g, "");
+                    setQtdExtras(val || "0");
+                  }}
+                />
+              </div>
 
-          <div className="space-y-2">
-            <label className="text-[10px] uppercase font-black text-[#ffcc00] ml-2">
-              Limite de Extras
-            </label>
-            <input
-              type="number"
-              value={qtdExtras}
-              onChange={(e) => setQtdExtras(e.target.value)}
-              className="w-full bg-black/20 border border-white/10 p-4 rounded-xl text-white font-bold"
-            />
-          </div>
-        </div>
+              <p className="col-span-2 text-[9px] text-[#ffcc00]/60 text-center font-bold uppercase italic">
+                Configuração exclusiva para o Combo
+              </p>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="space-y-2">

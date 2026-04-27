@@ -250,14 +250,15 @@ const produtosFiltrados = useMemo(() => {
                 </div>
 
 <div className="min-w-0 flex-1">
-  <div className="flex items-center gap-2 mb-0.5">
+  <div className="flex items-center gap-2 mb-0.5 overflow-hidden">
     <span className="text-[7px] md:text-[8px] text-[#ffcc00] font-bold uppercase tracking-wider block truncate">
       {p.categoria_nome}
     </span>
 
+    {/* 🔥 INDICADOR DE COMBO / MONTE SEU */}
     {p.categoria_nome?.toLowerCase().includes("monte seu cuscuz") && (
-      <span className="bg-[#ffcc00] text-[#3b013b] text-[7px] px-1.5 py-0.5 rounded-full font-black uppercase tracking-tighter">
-        Combo • {p.qtd_sabores_gratis || 2} Recheios
+      <span className="bg-[#ffcc00] text-[#3b013b] text-[7px] px-1.5 py-0.5 rounded-full font-black uppercase tracking-tighter whitespace-nowrap">
+        {p.qtd_sabores_gratis || 0} Recheios Grátis
       </span>
     )}
   </div>
@@ -272,17 +273,14 @@ const produtosFiltrados = useMemo(() => {
 
   <div className="flex items-center gap-2">
     <p className="text-[#ffcc00] font-black italic text-[11px] md:text-sm">
-      R$ {p.preco.toFixed(2)}
+      {p.preco > 0 ? `R$ ${p.preco.toFixed(2)}` : "GRÁTIS NO COMBO"}
     </p>
 
-    {/* 🔥 INDICADOR DE ITEM GRÁTIS */}
-    {p.preco === 0 && (
-      <span className="text-[9px] text-green-400 font-bold uppercase italic">
-        (Grátis no Combo)
-      </span>
-    )}
+    <span className="text-[8px] text-white/20 font-bold uppercase">
+      / {p.unidade_medida || 'unid'}
+    </span>
   </div>
-</div> 
+</div>
 
               {/* DIREITA: Botões de Ação - BLINDADOS (flex-none) */}
               <div className="flex gap-1.5 ml-2 flex-none">
