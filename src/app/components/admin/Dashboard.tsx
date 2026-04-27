@@ -34,129 +34,115 @@ export const Dashboard = () => {
     totalDescontos: 0,
   });
 
-  useEffect(() => {
-    const fetchStats = async () => {
-      if (
-        typeof window === "undefined" ||
-        !supabase ||
-        !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-      ) {
+ useEffect(() => {
+  let isMounted = true;
+
+  const fetchStats = async () => {
+    if (
+      typeof window === "undefined" ||
+      !supabase ||
+      !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+    ) {
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      const inicioMes = `${dataAlvo.slice(0, 7)}-01T00:00:00.000Z`;
+      const fimDiaCompleto = `${dataAlvo}T23:59:59.999Z`;
+
+      console.log("Consultando de:", inicioMes, "até:", fimDiaCompleto);
+
+      // 🔹 1ª chamada (pedidos)
+      const { data: pedidosData, error } = await supabase
+        .from("pedidos")
+        .select("total_pedido, created_at, id")
+        .eq("tenant_id", TENANT_ID_MACIEL)
+        .gte("created_at", inicioMes)
+        .lte("created_at", fimDiaCompleto);
+
+      if (error) throw error;
+      if (!isMounted) return;
+
+      const pedidos = pedidosData || [];
+
+      if (!pedidos.length) {
+        setMetrics({
+          faturamentoDia: 0,
+          faturamentoMes: 0,
+          totalPedidosDia: 0,
+          rankingDia: [],
+          rankingMes: [],
+          totalDescontos: 0,
+        });
         return;
       }
 
-      setLoading(true);
-      try {
-        const { data, error } = await supabase
-          .from("pedidos")
-          .select("*")
-          .eq("tenant_id", TENANT_ID_MACIEL)
-          .limit(1);
-        const hoje = dataAlvo;
+      const IDsDosPedidos = pedidos.map((p) => p.id);
 
-        const inicioMes = `${dataAlvo.slice(0, 7)}-01T00:00:00.000Z`;
-        const fimDiaCompleto = `${dataAlvo}T23:59:59.999Z`;
+     const { data: itensData, error: erroItens } = await supabase
+  .from("pedido_itens")
+  .select("*")
+  .in("pedido_id", IDsDosPedidos);
 
-        console.log("Consultando de:", inicioMes, "até:", fimDiaCompleto);
-        if (error) {
-          console.log("--- DIAGNÓSTICO SUPABASE ---");
-          console.log("Código do Erro:", error.code);
-          console.log("Mensagem:", error.message);
-          console.log("Detalhes:", error.details);
-          console.log("Dica:", error.hint);
-          console.log("---------------------------");
-        } else {
-          console.log("✅ Conexão com pedidos funcionando!", data);
+if (erroItens) throw erroItens;
+
+const itensRaw: ItemPedidoDB[] = itensData ?? [];
+
+      // 🔸 PROCESSAMENTO
+      const countsDia: Record<string, number> = {};
+      const countsMes: Record<string, number> = {};
+
+      const pedidosHoje = pedidos.filter((p) =>
+        p.created_at.startsWith(dataAlvo),
+      );
+
+      const pedidosHojeIDs = pedidosHoje.map((p) => p.id);
+
+      itensRaw.forEach((item) => {
+        const nome = item.produto_nome || item.nome || "Produto";
+
+        countsMes[nome] = (countsMes[nome] || 0) + (item.quantidade || 1);
+
+        if (pedidosHojeIDs.includes(item.pedido_id)) {
+          countsDia[nome] = (countsDia[nome] || 0) + (item.quantidade || 1);
         }
+      });
 
-        const { data: pedidosMes } = await supabase
-          .from("pedidos")
-          .select("total_pedido, created_at, id")
-          .eq("tenant_id", TENANT_ID_MACIEL)
-          .gte("created_at", inicioMes)
-          .lte("created_at", fimDiaCompleto);
+      const sortRanking = (obj: Record<string, number>) =>
+        Object.entries(obj)
+          .map(([nome, qtd]) => ({ nome, qtd }))
+          .sort((a, b) => b.qtd - a.qtd)
+          .slice(0, 5);
 
-        const pedidos = pedidosMes || [];
+      setMetrics({
+        faturamentoDia: pedidosHoje.reduce(
+          (acc, p) => acc + Number(p.total_pedido || 0),
+          0,
+        ),
+        faturamentoMes: pedidos.reduce(
+          (acc, p) => acc + Number(p.total_pedido || 0),
+          0,
+        ),
+        totalPedidosDia: pedidosHoje.length,
+        rankingDia: sortRanking(countsDia),
+        rankingMes: sortRanking(countsMes),
+        totalDescontos: 0,
+      });
+    } catch (error) {
+      console.error("Erro Dashboard:", error);
+    } finally {
+      if (isMounted) setLoading(false);
+    }
+  };
 
-        if (!pedidos.length) {
-          setMetrics({
-            faturamentoDia: 0,
-            faturamentoMes: 0,
-            totalPedidosDia: 0,
-            rankingDia: [],
-            rankingMes: [],
-            totalDescontos: 0,
-          });
-          return;
-        }
+  fetchStats();
 
-        const IDsDosPedidos = pedidos.map((p) => p.id);
-
-        let itensRaw: ItemPedidoDB[] = [];
-
-        if (IDsDosPedidos.length > 0) {
-          const { data, error: erroItens } = await supabase
-            .from("pedido_itens")
-            .select("*")
-            .in("pedido_id", IDsDosPedidos)
-            .returns<ItemPedidoDB[]>();
-
-          if (erroItens) {
-            console.error("Erro ao buscar itens:", erroItens.message);
-            return;
-          }
-
-          itensRaw = data || [];
-        }
-
-        const countsDia: Record<string, number> = {};
-        const countsMes: Record<string, number> = {};
-
-        const pedidosHoje = pedidos.filter((p) =>
-          p.created_at.startsWith(dataAlvo),
-        );
-
-        const pedidosHojeIDs = pedidosHoje.map((p) => p.id);
-
-        itensRaw.forEach((item) => {
-          const nome = item.produto_nome || item.nome || "Produto";
-
-          countsMes[nome] = (countsMes[nome] || 0) + (item.quantidade || 1);
-
-          if (pedidosHojeIDs.includes(item.pedido_id)) {
-            countsDia[nome] = (countsDia[nome] || 0) + (item.quantidade || 1);
-          }
-        });
-
-        const sortRanking = (obj: Record<string, number>) =>
-          Object.entries(obj)
-            .map(([nome, qtd]) => ({ nome, qtd }))
-            .sort((a, b) => b.qtd - a.qtd)
-            .slice(0, 5);
-
-        setMetrics({
-          faturamentoDia: pedidosHoje.reduce(
-            (acc, p) => acc + Number(p.total_pedido || 0),
-            0,
-          ),
-
-          faturamentoMes: pedidos.reduce(
-            (acc, p) => acc + Number(p.total_pedido || 0),
-            0,
-          ),
-          totalPedidosDia: pedidosHoje.length,
-          rankingDia: sortRanking(countsDia),
-          rankingMes: sortRanking(countsMes),
-          totalDescontos: 0,
-        });
-      } catch (error) {
-        console.error("Erro Dashboard:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchStats();
-  }, [dataAlvo]);
+  return () => {
+    isMounted = false;
+  };
+}, [dataAlvo]);
 
   return (
     <div className="space-y-8 pb-12 animate-in fade-in duration-500">

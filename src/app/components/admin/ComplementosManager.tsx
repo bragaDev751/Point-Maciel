@@ -14,7 +14,13 @@ interface ComplementoItem {
   tipo: "sabor" | "extra";
 }
 
-const CATEGORIAS = ['Sorvete', 'Açaí', 'Hambúrgueres', 'Cuscuz'];
+const CATEGORIAS = [
+  "Sorvete",
+  "Açaí",
+  "Hambúrgueres",
+  "Cuscuz",
+  "Monte seu Cuscuz",
+];
 export function ComplementosManager() {
   const [itens, setItens] = useState<ComplementoItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -37,7 +43,12 @@ export function ComplementosManager() {
         .order("categoria_pai");
 
       if (error) throw error;
-      setItens(data || []);
+      const itensNormalizados = (data || []).map((item) => ({
+        ...item,
+        categoria_pai: item.categoria_pai?.trim() || "",
+      }));
+
+      setItens(itensNormalizados);
     } catch (err) {
       toast.error("Erro ao carregar complementos");
       console.error(err);
@@ -68,29 +79,34 @@ export function ComplementosManager() {
     }
   }
 
- async function handleAdd(e: React.FormEvent) {
-  e.preventDefault();
-  if (!form.nome) return toast.error("Nome obrigatório");
-  
-  const categoriaParaSalvar = form.categoria_pai.trim();
+  async function handleAdd(e: React.FormEvent) {
+    e.preventDefault();
+    if (!form.nome) return toast.error("Nome obrigatório");
 
-  const { error } = await supabase.from('complementos').insert([{
-    nome: form.nome.trim(),
-    preco: parseFloat(form.preco.replace(',', '.')),
-    categoria_pai: categoriaParaSalvar,
-    tipo: form.tipo,
-    tenant_id: TENANT_ID_MACIEL,
-    disponivel: true
-  }]);
+    const categoriaParaSalvar = form.categoria_pai.trim();
 
-  if (!error) {
-    toast.success("Adicionado com sucesso!");
-    setForm(prev => ({ ...prev, nome: '', preco: '0' }));
-    carregar();
-  } else {
-    toast.error("Erro ao salvar no banco.");
+    const { error } = await supabase.from("complementos").insert([
+      {
+        nome: form.nome.trim(),
+        preco:
+          form.categoria_pai === "Monte seu Cuscuz"
+            ? 0
+            : parseFloat(form.preco.replace(",", ".")),
+        categoria_pai: categoriaParaSalvar,
+        tipo: form.tipo,
+        tenant_id: TENANT_ID_MACIEL,
+        disponivel: true,
+      },
+    ]);
+
+    if (!error) {
+      toast.success("Adicionado com sucesso!");
+      setForm((prev) => ({ ...prev, nome: "", preco: "0" }));
+      carregar();
+    } else {
+      toast.error("Erro ao salvar no banco.");
+    }
   }
-}
 
   async function excluir(id: string) {
     if (!confirm("Excluir item permanentemente?")) return;
@@ -133,11 +149,18 @@ export function ComplementosManager() {
               Preço Adicional (R$)
             </label>
             <input
-              placeholder="0,00"
-              value={form.preco}
-              onChange={(e) => setForm({ ...form, preco: e.target.value })}
-              className="w-full p-4 bg-black/40 rounded-2xl border border-white/10 outline-none focus:border-[#ffcc00] text-sm text-white transition-all"
-            />
+  placeholder="0,00"
+  value={
+    form.categoria_pai === "Monte seu Cuscuz"
+      ? "0"
+      : form.preco
+  }
+  disabled={form.categoria_pai === "Monte seu Cuscuz"}
+  onChange={(e) =>
+    setForm({ ...form, preco: e.target.value })
+  }
+  className="w-full p-4 bg-black/40 rounded-2xl border border-white/10 outline-none focus:border-[#ffcc00] text-sm text-white transition-all disabled:opacity-50"
+/>
           </div>
 
           <div className="grid grid-cols-2 gap-3">
@@ -147,9 +170,17 @@ export function ComplementosManager() {
               </label>
               <select
                 value={form.categoria_pai}
-                onChange={(e) =>
-                  setForm({ ...form, categoria_pai: e.target.value })
-                }
+                onChange={(e) => {
+                  const novaCategoria = e.target.value;
+
+                  setForm((prev) => ({
+                    ...prev,
+                    categoria_pai: novaCategoria,
+
+                    tipo:
+                      novaCategoria === "Monte seu Cuscuz" ? "sabor" : "extra",
+                  }));
+                }}
                 className="w-full p-4 bg-black/40 rounded-2xl border border-white/10 outline-none focus:border-[#ffcc00] text-xs appearance-none text-white font-bold"
               >
                 {CATEGORIAS.map((cat) => (
@@ -166,6 +197,7 @@ export function ComplementosManager() {
               </label>
               <select
                 value={form.tipo}
+                disabled={form.categoria_pai === "Monte seu Cuscuz"}
                 onChange={(e) =>
                   setForm({
                     ...form,
@@ -196,85 +228,108 @@ export function ComplementosManager() {
 
       {/* LISTAGEM */}
       <div className="lg:col-span-8 space-y-12">
-        {CATEGORIAS.map((cat) => (
-          <div key={cat} className="space-y-6">
-            <div className="flex items-center gap-4">
-              <div className="p-2 bg-[#ffcc00]/10 rounded-lg">
-                <IceCream size={16} className="text-[#ffcc00]" />
-              </div>
-              <h3 className="text-sm font-black uppercase text-white italic tracking-[0.2em]">
-                {cat}
-              </h3>
-              <div className="h-px flex-1 bg-gradient-to-r from-white/10 to-transparent" />
-            </div>
+        {CATEGORIAS.map((cat) => {
+  const itensDaCategoria = itens.filter((i) => {
+    const nomeCat = (i.categoria_pai || "").trim().toLowerCase();
+    const catAlvo = cat.trim().toLowerCase();
 
-            {["sabor", "extra"].map((subTipo) => (
-              <div key={subTipo} className="space-y-3">
-                <h4 className="text-[9px] font-black uppercase text-white/30 ml-2 tracking-widest">
-                  {subTipo === "sabor"
-                    ? "🍦 Sabores / Massas"
-                    : "✨ Acompanhamentos / Extras"}
-                </h4>
+    if (catAlvo === "monte seu cuscuz") {
+      return nomeCat === catAlvo && Number(i.preco) === 0;
+    }
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  {loading ? (
-                    <div className="h-20 bg-white/5 animate-pulse rounded-3xl md:col-span-2" />
-                  ) : itens.filter(
-                      (i) => i.categoria_pai === cat && i.tipo === subTipo,
-                    ).length === 0 ? (
-                    <p className="text-[10px] text-white/10 italic p-4 border border-dashed border-white/5 rounded-2xl md:col-span-2 text-center">
-                      Nenhum item cadastrado nesta subcategoria.
-                    </p>
-                  ) : (
-                    itens
-                      .filter(
-                        (i) => i.categoria_pai === cat && i.tipo === subTipo,
-                      )
-                      .map((item) => (
-                        <div
-                          key={item.id}
-                          className={`flex justify-between items-center bg-white/5 p-4 rounded-[1.5rem] border transition-all ${item.disponivel ? "border-white/5" : "border-red-500/20 opacity-60 grayscale"}`}
-                        >
-                          <div className="flex items-center gap-4">
-                            <button
-                              onClick={() =>
-                                toggleStatus(item.id, item.disponivel)
-                              }
-                              className={`w-11 h-11 flex items-center justify-center rounded-2xl transition-all ${item.disponivel ? "bg-green-500/10 text-green-500" : "bg-red-500/10 text-red-500"}`}
-                            >
-                              {item.disponivel ? (
-                                <Power size={18} />
-                              ) : (
-                                <PowerOff size={18} />
-                              )}
-                            </button>
+    return nomeCat === catAlvo;
+  });
 
-                            <div>
-                              <p className="text-sm font-bold uppercase text-white">
-                                {item.nome}
-                              </p>
-                              <p className="text-[#ffcc00] text-[10px] font-black">
-                                {item.preco === 0
-                                  ? "GRÁTIS"
-                                  : `+ R$ ${Number(item.preco).toFixed(2)}`}
-                              </p>
-                            </div>
-                          </div>
+          if (itensDaCategoria.length === 0) return null;
 
-                          <button
-                            onClick={() => excluir(item.id)}
-                            className="p-3 text-white/20 hover:text-red-500"
-                          >
-                            <Trash2 size={16} />
-                          </button>
-                        </div>
-                      ))
-                  )}
+          return (
+            <div key={cat} className="space-y-6">
+              <div className="flex items-center gap-4">
+                <div className="p-2 bg-[#ffcc00]/10 rounded-lg">
+                  <IceCream size={16} className="text-[#ffcc00]" />
                 </div>
+                <h3 className="text-sm font-black uppercase text-white italic tracking-[0.2em]">
+                  {cat}
+                </h3>
+                <div className="h-px flex-1 bg-gradient-to-r from-white/10 to-transparent" />
               </div>
-            ))}
-          </div>
-        ))}
+
+              {["sabor", "extra"].map((subTipo) => {
+                const itensFiltrados = itensDaCategoria.filter(
+                  (i) => i.tipo === subTipo,
+                );
+
+                return (
+                  <div key={subTipo} className="space-y-3">
+                    <h4 className="text-[9px] font-black uppercase text-white/30 ml-2 tracking-widest">
+                      {subTipo === "sabor"
+                        ? "🍦 Sabores / Massas"
+                        : "✨ Acompanhamentos / Extras"}
+                    </h4>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      {loading ? (
+                        <div className="h-20 bg-white/5 animate-pulse rounded-3xl md:col-span-2" />
+                      ) : itensFiltrados.length === 0 ? (
+                        <p className="text-[10px] text-white/10 italic p-4 border border-dashed border-white/5 rounded-2xl md:col-span-2 text-center">
+                          Nenhum item cadastrado nesta subcategoria.
+                        </p>
+                      ) : (
+                        itensFiltrados.map((item) => (
+                          <div
+                            key={item.id}
+                            className={`flex justify-between items-center bg-white/5 p-4 rounded-[1.5rem] border transition-all ${
+                              item.disponivel
+                                ? "border-white/5"
+                                : "border-red-500/20 opacity-60 grayscale"
+                            }`}
+                          >
+                            <div className="flex items-center gap-4">
+                              <button
+                                onClick={() =>
+                                  toggleStatus(item.id, item.disponivel)
+                                }
+                                className={`w-11 h-11 flex items-center justify-center rounded-2xl ${
+                                  item.disponivel
+                                    ? "bg-green-500/10 text-green-500"
+                                    : "bg-red-500/10 text-red-500"
+                                }`}
+                              >
+                                {item.disponivel ? (
+                                  <Power size={18} />
+                                ) : (
+                                  <PowerOff size={18} />
+                                )}
+                              </button>
+
+                              <div>
+                                <p className="text-sm font-bold uppercase text-white">
+                                  {item.nome}
+                                </p>
+                                <p className="text-[#ffcc00] text-[10px] font-black">
+                                  {item.preco === 0
+                                    ? "GRÁTIS"
+                                    : `+ R$ ${Number(item.preco).toFixed(2)}`}
+                                </p>
+                              </div>
+                            </div>
+
+                            <button
+                              onClick={() => excluir(item.id)}
+                              className="p-3 text-white/20 hover:text-red-500"
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          );
+        })}
       </div>
     </div>
   );

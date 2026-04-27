@@ -149,12 +149,15 @@ export const CheckoutForm = ({
     msg += `*ITENS:*%0A`;
 
     carrinho.forEach((item, index) => {
-      msg += `*${index + 1}. ${item.nome}* ${item.categoria_nome === 'Artesanais' ? '(Premium)' : ''}%0A`;
-      if (item.descricao) {
-        msg += `   ➕ ${item.descricao}%0A`;
-      }
-      msg += `   R$ ${item.preco.toFixed(2)}%0A%0A`;
-    });
+  msg += `*${index + 1}. ${item.nome.toUpperCase()}*%0A`;
+  
+  if (item.descricao) {
+    const descWhats = item.descricao.replace(/\n/g, "%0A   ");
+    msg += `   ${descWhats}%0A`;
+  }
+  
+  msg += `   _R$ ${item.preco.toFixed(2)}_%0A%0A`;
+});
 
     msg += `---------------------------------------%0A`;
     msg += `*TOTAL FINAL: R$ ${totalFinalComTaxa.toFixed(2)}*%0A`;
@@ -353,10 +356,10 @@ export const CheckoutForm = ({
             </p>
 
             {item.descricao && (
-              <p className="text-[9px] text-yellow-400/80 font-bold truncate">
-                {item.descricao}
-              </p>
-            )}
+  <p className="text-[10px] text-yellow-400/80 font-medium leading-relaxed whitespace-pre-line mt-1">
+    {item.descricao}
+  </p>
+)}
 
             <p className="text-yellow-400 font-black italic text-[11px] mt-0.5">
               R$ {item.preco.toFixed(2)}

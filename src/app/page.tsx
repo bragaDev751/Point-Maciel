@@ -139,6 +139,7 @@ function HomeContent() {
       "sanduiche",
       "acai",
       "sorvete",
+      "monte seu cuscuz"
     ];
 
     const ehSanduiche =
@@ -165,35 +166,35 @@ function HomeContent() {
     setTimeout(() => setAnimarCarrinho(false), 300);
   };
   const confirmarAdicaoModal = (
-    p: Produto,
-    qtdTotal: number,
-    extras?: ComplementoSelecao[],
-  ) => {
-    const precoExtras =
-      extras?.reduce((acc, comp) => {
-        return acc + (comp.preco || 0) * comp.quantidade_selecionada;
-      }, 0) || 0;
+  p: Produto,
+  qtdTotal: number,
+  extras?: ComplementoSelecao[],
+) => {
+  const precoExtras =
+    extras?.reduce((acc, comp) => {
+      return acc + (comp.preco || 0) * comp.quantidade_selecionada;
+    }, 0) || 0;
 
-    const extrasTexto = extras?.length
-      ? extras.map((e) => `${e.quantidade_selecionada}x ${e.nome}`).join(", ")
-      : "";
+  const produtoComExtras: Produto = {
+    ...p,
+    preco: p.preco + precoExtras,
 
-    const descricaoFinal = p.descricao
-      ? `${p.descricao}${extrasTexto ? ` + [${extrasTexto}]` : ""}`
-      : extrasTexto;
 
-    const produtoComExtras: Produto = {
-      ...p,
-      preco: p.preco + precoExtras,
-      descricao: descricaoFinal,
-    };
-
-    setCarrinho((prev) => [...prev, produtoComExtras]);
-    setAnimarCarrinho(true);
-    setProdutoSelecionado(null);
-    toast.success(`${p.nome} adicionado!`, { position: "bottom-center" });
-    setTimeout(() => setAnimarCarrinho(false), 300);
+    descricao: p.descricao,
   };
+
+  setCarrinho((prev) => [...prev, produtoComExtras]);
+
+  setAnimarCarrinho(true);
+
+  setProdutoSelecionado(null);
+
+  toast.success(`${p.nome} adicionado!`, {
+    position: "bottom-center",
+  });
+
+  setTimeout(() => setAnimarCarrinho(false), 300);
+};
 
   const handleRemove = (index: number) => {
     setCarrinho((prev) => prev.filter((_, i) => i !== index));

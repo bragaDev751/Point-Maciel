@@ -99,7 +99,13 @@ export const ProductForm = () => {
     window.addEventListener("editProduct", handleEdit);
     return () => window.removeEventListener("editProduct", handleEdit);
   }, []);
-
+  useEffect(() => {
+    if (categoria === "Monte seu Cuscuz") {
+      if (qtdSabores === "0" || qtdSabores === "") {
+        setQtdSabores("2");
+      }
+    }
+  }, [categoria]);
   const cancelarEdicao = () => {
     setEditandoId(null);
     setNome("");
@@ -107,6 +113,9 @@ export const ProductForm = () => {
     setDescricao("");
     setImageFile(null);
     setPreviewUrl(null);
+    if (listaCategorias.length > 0) {
+      setCategoria(listaCategorias[0].nome);
+    }
     setHoraInicio("00:00");
     setHoraFim("23:59");
     setDisponivelSempre(true);
@@ -125,78 +134,106 @@ export const ProductForm = () => {
     }
   };
 
-  const uploadImagem = async (file: File) => {
-    const fileExt = file.name.split(".").pop();
-    const fileName = `${TENANT_ID_MACIEL}/${Date.now()}.${fileExt}`;
-    const filePath = fileName;
+const uploadImagem = async (file: File) => {
+  if (file.size > 2 * 1024 * 1024) {
+    toast.error("Imagem muito grande! Use fotos de até 2MB.");
+    throw new Error("File too large");
+  }
 
-    const { error: uploadError } = await supabase.storage
-      .from("produtos")
-      .upload(filePath, file);
+  const fileExt = file.name.split(".").pop();
 
-    if (uploadError) throw uploadError;
+  const safeName = `${Date.now()}-${Math.random()
+    .toString(36)
+    .substring(7)}.${fileExt}`;
 
-    const { data } = supabase.storage.from("produtos").getPublicUrl(filePath);
-    return data.publicUrl;
-  };
+  const filePath = `${TENANT_ID_MACIEL}/${safeName}`;
 
-  const salvar = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const { error: uploadError } = await supabase.storage
+    .from("produtos")
+    .upload(filePath, file, {
+      cacheControl: "3600",
+      upsert: false,
+    });
 
-    if (!nome || !preco || !categoria) {
-      return toast.error("Preencha nome, preço e categoria!");
+  if (uploadError) throw uploadError;
+
+  const { data } = supabase.storage.from("produtos").getPublicUrl(filePath);
+
+  return data.publicUrl;
+};
+
+const salvar = async (e: React.FormEvent) => {
+  e.preventDefault();
+
+  if (!nome || !preco || !categoria) {
+    return toast.error("Preencha nome, preço e categoria!");
+  }
+
+  setUploading(true);
+
+  try {
+    let imageUrl = previewUrl?.startsWith("http") ? previewUrl : null;
+
+    if (imageFile) {
+      imageUrl = await uploadImagem(imageFile);
+
+      // 🧠 ESSENCIAL PRO MAC / SAFARI
+      await new Promise((resolve) => setTimeout(resolve, 400));
     }
 
-    setUploading(true);
+    const hInicio = disponivelSempre ? "00:00:00" : `${horaInicio}:00`;
+    const hFim = disponivelSempre ? "23:59:59" : `${horaFim}:00`;
 
-    try {
-      let imageUrl = previewUrl?.startsWith("http") ? previewUrl : null;
-      if (imageFile) {
-        imageUrl = await uploadImagem(imageFile);
-      }
+    const saboresFinal =
+      categoria === "Monte seu Cuscuz"
+        ? Math.max(1, parseInt(qtdSabores) || 2)
+        : parseInt(qtdSabores) || 0;
 
-      const hInicio = disponivelSempre ? "00:00:00" : `${horaInicio}:00`;
-      const hFim = disponivelSempre ? "23:59:59" : `${horaFim}:00`;
+    // ⚡ PAYLOAD LIMPO (SEM DUPLICAÇÃO)
+    const dados: ProdutoMutation = {
+      nome,
+      preco: parseFloat(preco),
+      categoria_nome: categoria,
+      descricao: descricao || "",
+      tenant_id: TENANT_ID_MACIEL,
+      hora_inicio: hInicio,
+      hora_fim: hFim,
+      disponivel_sempre: disponivelSempre,
+      unidade_medida: unidadeMedida,
 
-      const dados: ProdutoMutation = {
-        nome,
-        preco: parseFloat(preco),
-        categoria_nome: categoria,
-        descricao: descricao || "",
-        tenant_id: TENANT_ID_MACIEL,
-        hora_inicio: hInicio,
-        hora_fim: hFim,
-        disponivel_sempre: disponivelSempre,
-        unidade_medida: unidadeMedida,
-        image: imageUrl ?? undefined,
-        imagem_url: imageUrl ?? undefined,
+      imagem_url: imageUrl ?? "",
 
-        qtd_sabores_gratis: parseInt(qtdSabores) || 0,
-        qtd_extras_max: parseInt(qtdExtras) || 0,
-      };
+      qtd_sabores_gratis: saboresFinal,
+      qtd_extras_max: parseInt(qtdExtras) || 0,
+    };
 
-      const { error } = editandoId
-        ? await supabase
-            .from("produtos")
-            .update(dados)
-            .eq("id", editandoId)
-            .eq("tenant_id", TENANT_ID_MACIEL)
-        : await supabase.from("produtos").insert([dados]);
+    const { error } = editandoId
+      ? await supabase
+          .from("produtos")
+          .update(dados)
+          .eq("id", editandoId)
+          .eq("tenant_id", TENANT_ID_MACIEL)
+      : await supabase.from("produtos").insert([dados]);
 
-      if (error) throw error;
+    if (error) throw error;
 
-      toast.success(editandoId ? "Item atualizado!" : "Item adicionado!");
-      cancelarEdicao();
-      window.dispatchEvent(new Event("refreshProducts"));
-    } catch (error: unknown) {
-      console.dir(error);
-      let mensagem = "Erro desconhecido";
-      if (error instanceof Error) mensagem = error.message;
-      toast.error(`Erro: ${mensagem}`);
-    } finally {
-      setUploading(false);
-    }
-  };
+    toast.success(editandoId ? "Item atualizado!" : "Item adicionado!");
+    cancelarEdicao();
+    window.dispatchEvent(new Event("refreshProducts"));
+   } catch (error: unknown) {
+  console.error("Erro detalhado:", error);
+
+  let mensagem = "Falha na conexão";
+
+  if (error instanceof Error) {
+    mensagem = error.message;
+  }
+
+  toast.error(`Erro: ${mensagem}`);
+} finally {
+    setUploading(false);
+  }
+};
 
   return (
     <section
@@ -311,8 +348,17 @@ export const ProductForm = () => {
             </label>
             <input
               type="number"
+              min={categoria === "Monte seu Cuscuz" ? 1 : 0}
               value={qtdSabores}
-              onChange={(e) => setQtdSabores(e.target.value)}
+              onChange={(e) => {
+                const val = parseInt(e.target.value) || 0;
+
+                if (categoria === "Monte seu Cuscuz" && val < 1) {
+                  setQtdSabores("1");
+                } else {
+                  setQtdSabores(e.target.value);
+                }
+              }}
               className="w-full bg-black/20 border border-white/10 p-4 rounded-xl text-white font-bold"
             />
           </div>
@@ -364,6 +410,7 @@ export const ProductForm = () => {
             <label className="text-[10px] uppercase font-black text-white/30 ml-2">
               Categoria
             </label>
+
             <select
               value={categoria}
               onChange={(e) => setCategoria(e.target.value)}
@@ -375,6 +422,13 @@ export const ProductForm = () => {
                 </option>
               ))}
             </select>
+
+            {categoria === "Monte seu Cuscuz" && (
+              <p className="text-[9px] text-[#ffcc00] mt-1 ml-2 font-bold animate-pulse">
+                💡 Dica: Para cuscuz, Sabores define o limite de recheios
+                grátis.
+              </p>
+            )}
           </div>
         </div>
 
