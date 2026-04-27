@@ -133,12 +133,12 @@ export const SelectionModal = ({
         categoriaProduto.includes("sorvete") && catPai.includes("sorvete");
 
 
-const abrindoMonteSeu = categoriaProduto.includes("monte seu cuscuz");
-const abrindoCuscuzComum = isCuscuz && !abrindoMonteSeu;
+const abrindoMonteSeu = categoriaProduto === "monte seu cuscuz";
+const abrindoCuscuzComum = categoriaProduto === "cuscuz";
 
 if (abrindoMonteSeu) {
   return (
-    catPai.includes("monte seu cuscuz") &&
+    catPai === "monte seu cuscuz" &&
     comp.tipo === "sabor" &&
     comp.disponivel === true
   );
