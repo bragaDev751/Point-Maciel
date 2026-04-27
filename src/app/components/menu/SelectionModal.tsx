@@ -65,20 +65,18 @@ export const SelectionModal = ({
 
     return cat.includes("acai");
   }, [produto]);
-const isCuscuz = useMemo(() => {
-  return (produto?.categoria_nome || "")
-    .toLowerCase()
-    .includes("cuscuz");
-}, [produto]);
+  const isCuscuz = useMemo(() => {
+    return (produto?.categoria_nome || "").toLowerCase().includes("cuscuz");
+  }, [produto]);
   const limiteSabores = useMemo(() => {
-  const valorNoBanco = Number(produto?.qtd_sabores_gratis);
-  
-  if (isCuscuz) {
-    return valorNoBanco > 0 ? valorNoBanco : 2;
-  }
+    const valorNoBanco = Number(produto?.qtd_sabores_gratis);
 
-  return valorNoBanco > 0 ? valorNoBanco : 10;
-}, [produto, isCuscuz]);
+    if (isCuscuz) {
+      return valorNoBanco > 0 ? valorNoBanco : 2;
+    }
+
+    return valorNoBanco > 0 ? valorNoBanco : 10;
+  }, [produto, isCuscuz]);
 
   const limiteExtras = useMemo(() => {
     const valorNoBanco = Number(produto?.qtd_extras_max);
@@ -99,63 +97,72 @@ const isCuscuz = useMemo(() => {
     return null;
   }, [produto]);
 
- const { sabores, adicionais } = useMemo(() => {
-  if (!produto) return { sabores: [], adicionais: [] };
+  const { sabores, adicionais } = useMemo(() => {
+    if (!produto) return { sabores: [], adicionais: [] };
 
-  const format = (t: string) =>
-    (t || "")
-      .trim()
-      .toLowerCase()
-      .normalize("NFD")
-      .replace(/[\u0300-\u036f]/g, "");
+    const format = (t: string) =>
+      (t || "")
+        .trim()
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "");
 
-  const categoriaProduto = format(produto.categoria_nome || "");
-  const nomeProduto = format(produto.nome || "");
+    const categoriaProduto = format(produto.categoria_nome || "");
+    const nomeProduto = format(produto.nome || "");
 
-  const filtrados = complementos.filter((comp) => {
-    const catPai = format(comp.categoria_pai || "");
+    const filtrados = complementos.filter((comp) => {
+      const catPai = format(comp.categoria_pai || "");
 
-    // --- LANCHES ---
-    const isLanche =
-      categoriaProduto.includes("hamburguer") ||
-      categoriaProduto.includes("artesanal") ||
-      nomeProduto.includes("burger");
+      // --- LANCHES ---
+      const isLanche =
+        categoriaProduto.includes("hamburguer") ||
+        categoriaProduto.includes("artesanal") ||
+        nomeProduto.includes("burger");
 
-    const paiEhLanche =
-      catPai.includes("hamburguer") || catPai.includes("artesanal");
+      const paiEhLanche =
+        catPai.includes("hamburguer") || catPai.includes("artesanal");
 
-    if (isLanche && paiEhLanche) {
-      return comp.disponivel === true;
-    }
+      if (isLanche && paiEhLanche) {
+        return comp.disponivel === true;
+      }
 
-    const matchAcai =
-      categoriaProduto.includes("acai") && catPai.includes("acai");
+      const matchAcai =
+        categoriaProduto.includes("acai") && catPai.includes("acai");
 
-    const matchSorvete =
-      categoriaProduto.includes("sorvete") && catPai.includes("sorvete");
+      const matchSorvete =
+        categoriaProduto.includes("sorvete") && catPai.includes("sorvete");
 
-  const matchCuscuz = catPai.includes("cuscuz");
-const isMonteSeuCuscuz = categoriaProduto.includes("monte seu cuscuz");
 
-if (isCuscuz && matchCuscuz) {
-  if (isMonteSeuCuscuz) {
-    return comp.tipo === "sabor" && comp.disponivel === true;
-  } else {
-    return comp.tipo === "extra" && comp.disponivel === true;
-  }
+const abrindoMonteSeu = categoriaProduto.includes("monte seu cuscuz");
+const abrindoCuscuzComum = isCuscuz && !abrindoMonteSeu;
+
+if (abrindoMonteSeu) {
+  return (
+    catPai.includes("monte seu cuscuz") &&
+    comp.tipo === "sabor" &&
+    comp.disponivel === true
+  );
 }
 
-    return (
-      (matchAcai || matchSorvete || catPai === categoriaProduto) &&
-      comp.disponivel === true
-    );
-  });
+if (abrindoCuscuzComum) {
+  return (
+    catPai === "cuscuz" &&
+    comp.tipo === "extra" &&
+    comp.disponivel === true
+  );
+}
 
-  return {
-    sabores: filtrados.filter((c) => c.tipo === "sabor"),
-    adicionais: filtrados.filter((c) => c.tipo === "extra"),
-  };
-}, [complementos, produto, isCuscuz]);
+      return (
+        (matchAcai || matchSorvete || catPai === categoriaProduto) &&
+        comp.disponivel === true
+      );
+    });
+
+    return {
+      sabores: filtrados.filter((c) => c.tipo === "sabor"),
+      adicionais: filtrados.filter((c) => c.tipo === "extra"),
+    };
+  }, [complementos, produto, isCuscuz]);
 
   const totalSaboresSelecionados = sabores.reduce(
     (acc, s) => acc + (selecoes[s.id] || 0),
@@ -257,26 +264,28 @@ if (isCuscuz && matchCuscuz) {
               {produto.nome}
             </h2>
 
-{(isAcaiOrSorvete || isCuscuz) && (
-  <div className="mt-3 mb-6 flex flex-col items-center gap-1">
-  <div className="px-4 py-1 bg-[#ffcc00]/10 border border-[#ffcc00]/20 rounded-full">
-  <span className="text-[#ffcc00] text-[10px] font-black uppercase tracking-widest">
-    {sabores.length > 0 && (
-      <>
-        {isCuscuz ? "RECHEIOS" : "SABORES"}: {totalSaboresSelecionados}/
-        {limiteRecheiosCuscuz ?? limiteSabores}
-      </>
-    )}
+            {(isAcaiOrSorvete || isCuscuz) && (
+              <div className="mt-3 mb-6 flex flex-col items-center gap-1">
+                <div className="px-4 py-1 bg-[#ffcc00]/10 border border-[#ffcc00]/20 rounded-full">
+                  <span className="text-[#ffcc00] text-[10px] font-black uppercase tracking-widest">
+                    {sabores.length > 0 && (
+                      <>
+                        {isCuscuz ? "RECHEIOS" : "SABORES"}:{" "}
+                        {totalSaboresSelecionados}/
+                        {limiteRecheiosCuscuz ?? limiteSabores}
+                      </>
+                    )}
 
-    {sabores.length > 0 && adicionais.length > 0 && " • "}
+                    {sabores.length > 0 && adicionais.length > 0 && " • "}
 
-    {adicionais.length > 0 && (
-      <>
-        ACOMPANHAMENTOS: {totalExtrasSelecionados}/{limiteExtras}
-      </>
-    )}
-  </span>
-</div>
+                    {adicionais.length > 0 && (
+                      <>
+                        ACOMPANHAMENTOS: {totalExtrasSelecionados}/
+                        {limiteExtras}
+                      </>
+                    )}
+                  </span>
+                </div>
 
                 {isAcai && (
                   <span className="text-[8px] font-bold text-white/40 uppercase tracking-tighter">
@@ -290,9 +299,9 @@ if (isCuscuz && matchCuscuz) {
               {/* SABORES */}
               {sabores.length > 0 && (
                 <div className="space-y-3">
-                 <label className="text-[9px] font-black uppercase text-white/30 tracking-widest block ml-2 italic">
-  {isCuscuz ? "Escolha os Recheios" : "Escolha os Sabores"}
-</label>
+                  <label className="text-[9px] font-black uppercase text-white/30 tracking-widest block ml-2 italic">
+                    {isCuscuz ? "Escolha os Recheios" : "Escolha os Sabores"}
+                  </label>
 
                   {sabores.map((s) => (
                     <div
@@ -322,11 +331,11 @@ if (isCuscuz && matchCuscuz) {
                             (limiteRecheiosCuscuz ?? limiteSabores)
                           }
                           className={`w-8 h-8 rounded-lg font-bold flex items-center justify-center transition-all ${
-  totalSaboresSelecionados >=
-  (limiteRecheiosCuscuz ?? limiteSabores)
-    ? "bg-white/5 text-white/10 cursor-not-allowed"
-    : "bg-[#ffcc00] text-[#3b013b]"
-}`}
+                            totalSaboresSelecionados >=
+                            (limiteRecheiosCuscuz ?? limiteSabores)
+                              ? "bg-white/5 text-white/10 cursor-not-allowed"
+                              : "bg-[#ffcc00] text-[#3b013b]"
+                          }`}
                         >
                           +
                         </button>
@@ -400,17 +409,17 @@ if (isCuscuz && matchCuscuz) {
               <button
                 onClick={handleConfirm}
                 disabled={
-  (isAcaiOrSorvete || isCuscuz) &&
-  totalSaboresSelecionados === 0 &&
-  sabores.length > 0
-}
+                  (isAcaiOrSorvete || isCuscuz) &&
+                  totalSaboresSelecionados === 0 &&
+                  sabores.length > 0
+                }
                 className={`flex-[2] py-4 rounded-2xl font-black uppercase text-[10px] tracking-widest ${
-  (isAcaiOrSorvete || isCuscuz) &&
-  totalSaboresSelecionados === 0 &&
-  sabores.length > 0
-    ? "bg-white/5 text-white/20"
-    : "bg-[#ffcc00] text-[#3b013b] shadow-lg shadow-yellow-400/20"
-}`}
+                  (isAcaiOrSorvete || isCuscuz) &&
+                  totalSaboresSelecionados === 0 &&
+                  sabores.length > 0
+                    ? "bg-white/5 text-white/20"
+                    : "bg-[#ffcc00] text-[#3b013b] shadow-lg shadow-yellow-400/20"
+                }`}
               >
                 Confirmar • R$ {(produto.preco + precoExtras).toFixed(2)}
               </button>
