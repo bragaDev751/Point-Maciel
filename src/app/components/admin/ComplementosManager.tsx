@@ -85,13 +85,15 @@ export function ComplementosManager() {
 
     const categoriaParaSalvar = form.categoria_pai.trim();
 
+    const precoFinal =
+      form.tipo === "sabor" && form.categoria_pai === "Monte seu Cuscuz"
+        ? 0
+        : parseFloat(form.preco.replace(",", "."));
+
     const { error } = await supabase.from("complementos").insert([
       {
         nome: form.nome.trim(),
-        preco:
-          form.categoria_pai === "Monte seu Cuscuz"
-            ? 0
-            : parseFloat(form.preco.replace(",", ".")),
+        preco: precoFinal,
         categoria_pai: categoriaParaSalvar,
         tipo: form.tipo,
         tenant_id: TENANT_ID_MACIEL,
@@ -119,7 +121,8 @@ export function ComplementosManager() {
       toast.error("Erro ao excluir");
     }
   }
-
+  const isGratis =
+    form.tipo === "sabor" && form.categoria_pai === "Monte seu Cuscuz";
   return (
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
       {/* FORMULÁRIO DE CADASTRO */}
@@ -149,18 +152,12 @@ export function ComplementosManager() {
               Preço Adicional (R$)
             </label>
             <input
-  placeholder="0,00"
-  value={
-    form.categoria_pai === "Monte seu Cuscuz"
-      ? "0"
-      : form.preco
-  }
-  disabled={form.categoria_pai === "Monte seu Cuscuz"}
-  onChange={(e) =>
-    setForm({ ...form, preco: e.target.value })
-  }
-  className="w-full p-4 bg-black/40 rounded-2xl border border-white/10 outline-none focus:border-[#ffcc00] text-sm text-white transition-all disabled:opacity-50"
-/>
+              placeholder="0,00"
+              value={isGratis ? "0" : form.preco}
+              disabled={isGratis}
+              onChange={(e) => setForm({ ...form, preco: e.target.value })}
+              className="w-full p-4 bg-black/40 rounded-2xl border border-white/10 outline-none focus:border-[#ffcc00] text-sm text-white transition-all disabled:opacity-50"
+            />
           </div>
 
           <div className="grid grid-cols-2 gap-3">
@@ -178,7 +175,9 @@ export function ComplementosManager() {
                     categoria_pai: novaCategoria,
 
                     tipo:
-                      novaCategoria === "Monte seu Cuscuz" ? "sabor" : "extra",
+                      novaCategoria === "Monte seu Cuscuz"
+                        ? "sabor"
+                        : prev.tipo,
                   }));
                 }}
                 className="w-full p-4 bg-black/40 rounded-2xl border border-white/10 outline-none focus:border-[#ffcc00] text-xs appearance-none text-white font-bold"
@@ -229,16 +228,16 @@ export function ComplementosManager() {
       {/* LISTAGEM */}
       <div className="lg:col-span-8 space-y-12">
         {CATEGORIAS.map((cat) => {
-  const itensDaCategoria = itens.filter((i) => {
-    const nomeCat = (i.categoria_pai || "").trim().toLowerCase();
-    const catAlvo = cat.trim().toLowerCase();
+          const itensDaCategoria = itens.filter((i) => {
+            const nomeCat = (i.categoria_pai || "").trim().toLowerCase();
+            const catAlvo = cat.trim().toLowerCase();
 
-    if (catAlvo === "monte seu cuscuz") {
-      return nomeCat === catAlvo && Number(i.preco) === 0;
-    }
+            if (catAlvo === "monte seu cuscuz") {
+              return nomeCat === catAlvo;
+            }
 
-    return nomeCat === catAlvo;
-  });
+            return nomeCat === catAlvo;
+          });
 
           if (itensDaCategoria.length === 0) return null;
 
