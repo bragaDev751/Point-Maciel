@@ -199,7 +199,7 @@ function HomeContent() {
   const handleRemove = (index: number) => {
     setCarrinho((prev) => prev.filter((_, i) => i !== index));
   };
-  const produtosFiltrados = useMemo(() => {
+ const produtosFiltrados = useMemo(() => {
     if (catAtiva === "Destaques") {
       return produtos.slice(0, 10);
     }
@@ -216,6 +216,9 @@ function HomeContent() {
       const pCat = normalizar(p.categoria_nome || "");
       const activeCat = normalizar(catAtiva);
 
+      if (activeCat === "cuscuz" || activeCat === "monte seu cuscuz") {
+        return pCat === activeCat;
+      }
       return (
         pCat === activeCat ||
         pCat.includes(activeCat) ||

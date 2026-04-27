@@ -200,30 +200,23 @@ export const ProductForm = () => {
       const hInicio = disponivelSempre ? "00:00:00" : `${horaInicio}:00`;
       const hFim = disponivelSempre ? "23:59:59" : `${horaFim}:00`;
 
-      const saboresFinal = isMonteSeu
-        ? Math.max(1, parseInt(qtdSabores || "2"))
-        : 0;
-
-      const extrasFinal = isMonteSeu
-        ? Math.max(0, parseInt(qtdExtras || "5"))
-        : 0;
+      const saboresFinal = parseInt(qtdSabores || "0");
+const extrasFinal = parseInt(qtdExtras || "0");
 
       const dados: ProdutoMutation = {
-        nome,
-        preco: parseFloat(preco.replace(",", ".")),
-        categoria_nome: categoria,
-        descricao: descricao || "",
-        tenant_id: TENANT_ID_MACIEL,
-        hora_inicio: hInicio,
-        hora_fim: hFim,
-        disponivel_sempre: disponivelSempre,
-        unidade_medida: unidadeMedida,
-
-        imagem_url: imageUrl ?? "",
-
-        qtd_sabores_gratis: saboresFinal,
-        qtd_extras_max: extrasFinal,
-      };
+  nome,
+  preco: parseFloat(preco.replace(",", ".")),
+  categoria_nome: categoria,
+  descricao: descricao || "",
+  tenant_id: TENANT_ID_MACIEL,
+  hora_inicio: hInicio,
+  hora_fim: hFim,
+  disponivel_sempre: disponivelSempre,
+  unidade_medida: unidadeMedida,
+  imagem_url: imageUrl ?? "",
+  qtd_sabores_gratis: saboresFinal, 
+  qtd_extras_max: extrasFinal,
+};
 
       const { error } = editandoId
         ? await supabase
@@ -360,49 +353,47 @@ export const ProductForm = () => {
         </div>
 
         <AnimatePresence>
-          {isMonteSeu && (
-            <motion.div
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-              className="grid grid-cols-2 gap-4 bg-[#ffcc00]/5 p-6 rounded-[2rem] border border-[#ffcc00]/20"
-            >
-              <div className="space-y-2">
-                <label className="text-[10px] uppercase font-black text-[#ffcc00] ml-2">
-                  Recheios Grátis
-                </label>
-                <input
-                  type="number"
-                  min={1}
-                  value={qtdSabores}
-                  onChange={(e) => {
-                    const val = e.target.value.replace(/\D/g, "");
-                    setQtdSabores(val || "1");
-                  }}
-                />
-              </div>
+  {isMonteSeu && (
+    <motion.div
+      initial={{ opacity: 0, height: 0 }}
+      animate={{ opacity: 1, height: "auto" }}
+      exit={{ opacity: 0, height: 0 }}
+      className="overflow-hidden"
+    >
+      <div className="grid grid-cols-2 gap-4 bg-[#ffcc00]/5 p-6 rounded-[2rem] border border-[#ffcc00]/20 mb-4">
+        <div className="space-y-2">
+          <label className="text-[10px] uppercase font-black text-[#ffcc00] ml-2">
+            Recheios Inclusos
+          </label>
+          <input
+            type="number"
+            min={0}
+            value={qtdSabores}
+            onChange={(e) => setQtdSabores(e.target.value)}
+            className="w-full bg-black/20 border border-white/10 p-4 rounded-xl text-white font-bold outline-none focus:border-[#ffcc00]"
+          />
+        </div>
 
-              <div className="space-y-2">
-                <label className="text-[10px] uppercase font-black text-[#ffcc00] ml-2">
-                  Limite Extras
-                </label>
-                <input
-                  type="number"
-                  min={0}
-                  value={qtdExtras}
-                  onChange={(e) => {
-                    const val = e.target.value.replace(/\D/g, "");
-                    setQtdExtras(val || "0");
-                  }}
-                />
-              </div>
+        <div className="space-y-2">
+          <label className="text-[10px] uppercase font-black text-[#ffcc00] ml-2">
+            Limite Adicionais
+          </label>
+          <input
+            type="number"
+            min={0}
+            value={qtdExtras}
+            onChange={(e) => setQtdExtras(e.target.value)}
+            className="w-full bg-black/20 border border-white/10 p-4 rounded-xl text-white font-bold outline-none focus:border-[#ffcc00]"
+          />
+        </div>
 
-              <p className="col-span-2 text-[9px] text-[#ffcc00]/60 text-center font-bold uppercase italic">
-                Configuração exclusiva para o Combo
-              </p>
-            </motion.div>
-          )}
-        </AnimatePresence>
+        <p className="col-span-2 text-[9px] text-[#ffcc00]/60 text-center font-bold uppercase italic">
+          Configuração de limites para o Monte seu Cuscuz
+        </p>
+      </div>
+    </motion.div>
+  )}
+</AnimatePresence>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="space-y-2">

@@ -70,7 +70,7 @@ export const SelectionModal = ({
   }, [produto]);
   const limiteSabores = useMemo(() => {
     const valorNoBanco = Number(produto?.qtd_sabores_gratis);
-
+    
     if (isCuscuz) {
       return valorNoBanco > 0 ? valorNoBanco : 2;
     }
