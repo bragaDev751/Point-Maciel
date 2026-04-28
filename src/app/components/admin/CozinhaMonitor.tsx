@@ -181,109 +181,48 @@ export function CozinhaMonitor() {
   };
 }, []);
 
-  /* ================= ACTIONS ================= */
+/* ================= ACTIONS (INSTANTÂNEAS) ================= */
 
   const atualizarStatus = async (pedido: Pedido, novoStatus: StatusPedido) => {
-    try {
-      const jaProcessado = pedido.pontos_processados;
-      if (novoStatus === "finalizado" && jaProcessado) {
-        alert("Este pedido já foi pontuado anteriormente.");
-        return;
+    const pedidosOriginais = [...pedidos];
+    
+    setPedidos((prev) => {
+      if (novoStatus === "finalizado") {
+        return prev.filter((p) => p.id !== pedido.id);
       }
+      return prev.map((p) =>
+        p.id === pedido.id ? { ...p, status: novoStatus } : p
+      );
+    });
+
+    try {
       const { error: errorStatus } = await supabase
         .from("pedidos")
-        .update({
-          status: novoStatus,
-          pontos_processados:
-            novoStatus === "finalizado" ? true : pedido.pontos_processados,
-        })
+        .update({ status: novoStatus }) 
         .eq("id", pedido.id);
 
       if (errorStatus) throw errorStatus;
-
-      if (
-        novoStatus === "finalizado" &&
-        pedido.cliente_telefone &&
-        !jaProcessado
-      ) {
-        const pontosGanhos = Math.floor(pedido.total_pedido);
-
-        const { data: existente, error: errorBusca } = await supabase
-          .from("fidelidade")
-          .select("pontos_acumulados")
-          .eq("tenant_id", TENANT_ID_MACIEL)
-          .eq("cliente_telefone", pedido.cliente_telefone)
-          .maybeSingle();
-
-        if (errorBusca) throw errorBusca;
-
-        if (existente) {
-          const { error: errorUpdate } = await supabase
-            .from("fidelidade")
-            .update({
-              pontos_acumulados: existente.pontos_acumulados + pontosGanhos,
-              cliente_nome: pedido.cliente_nome,
-              updated_at: new Date().toISOString(),
-            })
-            .eq("tenant_id", TENANT_ID_MACIEL)
-            .eq("cliente_telefone", pedido.cliente_telefone);
-
-          if (errorUpdate) throw errorUpdate;
-        } else {
-          const { error: errorInsert } = await supabase
-            .from("fidelidade")
-            .insert({
-              tenant_id: TENANT_ID_MACIEL,
-              cliente_telefone: pedido.cliente_telefone,
-              cliente_nome: pedido.cliente_nome,
-              pontos_acumulados: pontosGanhos,
-            });
-
-          if (errorInsert) throw errorInsert;
-        }
-
-        console.log(`🎉 ${pontosGanhos} pontos para ${pedido.cliente_nome}`);
-      }
     } catch (err) {
-      console.error("Erro ao atualizar status/fidelidade:", err);
-      alert("Erro ao atualizar pedido.");
+      setPedidos(pedidosOriginais);
+      console.error("Erro ao atualizar status:", err);
+      alert("Erro na conexão. O pedido voltou ao estado anterior.");
     }
   };
 
-const excluirPedido = async (pedido: Pedido) => {
+  const excluirPedido = async (pedido: Pedido) => {
     if (!window.confirm("Deseja excluir este pedido? Se houver pontos, eles serão estornados.")) return;
 
     const copiaPedidosOriginal = [...pedidos];
     setPedidos((prev) => prev.filter((p) => p.id !== pedido.id));
 
     try {
-      if (pedido.pontos_processados && pedido.cliente_telefone) {
-        const pontosParaRemover = Math.floor(pedido.total_pedido);
-
-        const { data: fidelidade } = await supabase
-          .from("fidelidade")
-          .select("pontos_acumulados")
-          .eq("tenant_id", TENANT_ID_MACIEL)
-          .eq("cliente_telefone", pedido.cliente_telefone)
-          .maybeSingle();
-
-        if (fidelidade) {
-          const novoSaldo = Math.max(0, fidelidade.pontos_acumulados - pontosParaRemover);
-          await supabase
-            .from("fidelidade")
-            .update({ pontos_acumulados: novoSaldo, updated_at: new Date().toISOString() })
-            .eq("tenant_id", TENANT_ID_MACIEL)
-            .eq("cliente_telefone", pedido.cliente_telefone);
-        }
-      }
-
       const { error: errorDelete } = await supabase
         .from("pedidos")
         .delete()
         .eq("id", pedido.id);
 
       if (errorDelete) throw errorDelete;
-
+      
       console.log("Pedido removido com sucesso.");
     } catch (err) {
       console.error("Erro na exclusão:", err);
