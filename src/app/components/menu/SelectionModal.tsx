@@ -70,7 +70,7 @@ export const SelectionModal = ({
   }, [produto]);
   const limiteSabores = useMemo(() => {
     const valorNoBanco = Number(produto?.qtd_sabores_gratis);
-    
+
     if (isCuscuz) {
       return valorNoBanco > 0 ? valorNoBanco : 2;
     }
@@ -79,15 +79,14 @@ export const SelectionModal = ({
   }, [produto, isCuscuz]);
 
   const limiteExtras = useMemo(() => {
-    const valorNoBanco = Number(produto?.qtd_extras_max);
+  const valorNoBanco = Number(produto?.qtd_extras_max);
+  if (valorNoBanco > 0) return valorNoBanco;
 
-    if (valorNoBanco > 0) return valorNoBanco;
+  const cat = (produto?.categoria_nome || "").toLowerCase();
+  if (cat.includes("artesanal") || cat.includes("hamburguer") || cat.includes("sanduiche")) return 15;
 
-    const cat = (produto?.categoria_nome || "").toLowerCase();
-    if (cat.includes("artesanal") || cat.includes("hamburguer")) return 15;
-
-    return 10;
-  }, [produto]);
+  return 10;
+}, [produto]);
   const limiteRecheiosCuscuz = useMemo(() => {
     const nome = (produto?.nome || "").toLowerCase();
 
@@ -97,7 +96,7 @@ export const SelectionModal = ({
     return null;
   }, [produto]);
 
-  const { sabores, adicionais } = useMemo(() => {
+ const { sabores, adicionais } = useMemo(() => {
     if (!produto) return { sabores: [], adicionais: [] };
 
     const format = (t: string) =>
@@ -111,58 +110,47 @@ export const SelectionModal = ({
     const nomeProduto = format(produto.nome || "");
 
     const filtrados = complementos.filter((comp) => {
+      if (comp.disponivel !== true) return false;
+
       const catPai = format(comp.categoria_pai || "");
 
-      // --- LANCHES ---
+      // --- LÓGICA PARA LANCHES ---
       const isLanche =
-        categoriaProduto.includes("hamburguer") ||
-        categoriaProduto.includes("artesanal") ||
+        categoriaProduto.includes("hamb") ||
+        categoriaProduto.includes("artesanai") ||
+        categoriaProduto.includes("sanduiche") ||
         nomeProduto.includes("burger");
 
       const paiEhLanche =
-        catPai.includes("hamburguer") || catPai.includes("artesanal");
+        catPai.includes("hamb") ||
+        catPai.includes("artesanai") ||
+        catPai.includes("sanduiche");
 
-      if (isLanche && paiEhLanche) {
-        return comp.disponivel === true;
+      if (isLanche) {
+        if (paiEhLanche || catPai === "" || catPai === "null") return true;
+        if (catPai.includes("hamb")) return true;
       }
 
-      const matchAcai =
-        categoriaProduto.includes("acai") && catPai.includes("acai");
+      if (categoriaProduto.includes("cuscuz")) {
+        if (catPai.includes("cuscuz")) {
+          if (categoriaProduto.includes("monte")) {
+             return comp.tipo === "sabor";
+          }
+          return comp.tipo === "extra";
+        }
+      }
 
-      const matchSorvete =
-        categoriaProduto.includes("sorvete") && catPai.includes("sorvete");
+      const matchAcai = categoriaProduto.includes("acai") && catPai.includes("acai");
+      const matchSorvete = (categoriaProduto.includes("sorvete") || categoriaProduto.includes("gelado")) && catPai.includes("sorvete");
 
-
-const abrindoMonteSeu = categoriaProduto === "monte seu cuscuz";
-const abrindoCuscuzComum = categoriaProduto === "cuscuz";
-
-if (abrindoMonteSeu) {
-  return (
-    catPai === "monte seu cuscuz" &&
-    comp.tipo === "sabor" &&
-    comp.disponivel === true
-  );
-}
-
-if (abrindoCuscuzComum) {
-  return (
-    catPai === "cuscuz" &&
-    comp.tipo === "extra" &&
-    comp.disponivel === true
-  );
-}
-
-      return (
-        (matchAcai || matchSorvete || catPai === categoriaProduto) &&
-        comp.disponivel === true
-      );
+      return matchAcai || matchSorvete || catPai === categoriaProduto;
     });
 
     return {
       sabores: filtrados.filter((c) => c.tipo === "sabor"),
       adicionais: filtrados.filter((c) => c.tipo === "extra"),
     };
-  }, [complementos, produto, isCuscuz]);
+  }, [complementos, produto]);
 
   const totalSaboresSelecionados = sabores.reduce(
     (acc, s) => acc + (selecoes[s.id] || 0),

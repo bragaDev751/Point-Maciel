@@ -118,44 +118,20 @@ function HomeContent() {
     toast.success("Pedido enviado!", { duration: 5000, icon: "🔥" });
   };
 
-  const handleAdd = (p: Produto) => {
+ const handleAdd = (p: Produto) => {
     if (!p) return;
 
-    const format = (t: string) =>
-      (t || "")
-        .toLowerCase()
-        .trim()
-        .normalize("NFD")
-        .replace(/[\u0300-\u036f]/g, "")
-        .replace(/s$/, "");
+    const limpar = (t: string) =>
+      (t || "").trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 
-    const pCat = format(p.categoria_nome);
-    const pNome = format(p.nome);
+    const pCat = limpar(p.categoria_nome || "");
+    const pNome = limpar(p.nome || "");
 
-    const categoriasComComplementos = [
-      "artesanal",
-      "hamburguer",
-      "lanche",
-      "sanduiche",
-      "acai",
-      "sorvete",
-      "monte seu cuscuz"
-    ];
+    const termosModal = ["artesanai", "hamb", "lanche", "sanduiche", "acai", "sorvete", "cuscuz"];
 
-    const ehSanduiche =
-      categoriasComComplementos.includes(pCat) || pNome.includes("burger");
+    const deveAbrir = termosModal.some(item => pCat.includes(item) || pNome.includes(item));
 
-    if (ehSanduiche) {
-      setProdutoSelecionado(p);
-      return;
-    }
-
-    const temComplementosNoBanco = complementos?.some((c) => {
-      const cPai = format(c.categoria_pai);
-      return pCat === cPai;
-    });
-
-    if (temComplementosNoBanco) {
+    if (deveAbrir) {
       setProdutoSelecionado(p);
       return;
     }

@@ -250,57 +250,45 @@ export function CozinhaMonitor() {
     }
   };
 
-  const excluirPedido = async (pedido: Pedido) => {
-    if (
-      !window.confirm(
-        "Deseja excluir permanentemente este pedido? Se pontos foram gerados, eles serão estornados.",
-      )
-    )
-      return;
+const excluirPedido = async (pedido: Pedido) => {
+    if (!window.confirm("Deseja excluir este pedido? Se houver pontos, eles serão estornados.")) return;
+
+    const copiaPedidosOriginal = [...pedidos];
+    setPedidos((prev) => prev.filter((p) => p.id !== pedido.id));
 
     try {
       if (pedido.pontos_processados && pedido.cliente_telefone) {
         const pontosParaRemover = Math.floor(pedido.total_pedido);
 
-        const { data: fidelidade, error: errorBusca } = await supabase
+        const { data: fidelidade } = await supabase
           .from("fidelidade")
           .select("pontos_acumulados")
           .eq("tenant_id", TENANT_ID_MACIEL)
           .eq("cliente_telefone", pedido.cliente_telefone)
           .maybeSingle();
 
-        if (errorBusca) throw errorBusca;
-
         if (fidelidade) {
-          const novoSaldo = Math.max(
-            0,
-            fidelidade.pontos_acumulados - pontosParaRemover,
-          );
-
-          const { error: errorEstorno } = await supabase
+          const novoSaldo = Math.max(0, fidelidade.pontos_acumulados - pontosParaRemover);
+          await supabase
             .from("fidelidade")
-            .update({
-              pontos_acumulados: novoSaldo,
-              updated_at: new Date().toISOString(),
-            })
+            .update({ pontos_acumulados: novoSaldo, updated_at: new Date().toISOString() })
             .eq("tenant_id", TENANT_ID_MACIEL)
             .eq("cliente_telefone", pedido.cliente_telefone);
-
-          if (errorEstorno) throw errorEstorno;
-          console.log(`📉 Estorno realizado: -${pontosParaRemover} pontos.`);
         }
       }
 
       const { error: errorDelete } = await supabase
         .from("pedidos")
         .delete()
-        .eq("id", pedido.id)
-        .eq("tenant_id", TENANT_ID_MACIEL);
+        .eq("id", pedido.id);
 
       if (errorDelete) throw errorDelete;
+
+      console.log("Pedido removido com sucesso.");
     } catch (err) {
-      console.error("Erro na exclusão/estorno:", err);
-      alert("Falha ao excluir o pedido. Tente novamente.");
+      console.error("Erro na exclusão:", err);
+      setPedidos(copiaPedidosOriginal);
+      alert("Falha ao excluir o pedido no servidor. Ele foi restaurado na lista.");
     }
   };
 
